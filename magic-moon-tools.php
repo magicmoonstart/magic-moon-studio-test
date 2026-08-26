@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 1.1.0
+Version: 1.2.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -45,6 +45,43 @@ add_action('admin_init', function () {
     }
 });
 
+/**
+ * Replace English CTA texts with German across all Elementor data and post content.
+ */
+function mm_fix_cta_german() {
+    global $wpdb;
+    $pairs = array(
+        'Request for Consultation' => 'Beratung anfragen',
+        'Request a Consultation'   => 'Beratung anfragen',
+        'Request Consultation'     => 'Beratung anfragen',
+        'Book Consultation'        => 'Beratung buchen',
+    );
+    $total = 0;
+    foreach ($pairs as $from => $to) {
+        $total += (int) $wpdb->query($wpdb->prepare(
+            "UPDATE {$wpdb->postmeta} SET meta_value = REPLACE(meta_value, %s, %s)
+             WHERE meta_key = '_elementor_data' AND meta_value LIKE %s",
+            $from, $to, '%' . $wpdb->esc_like($from) . '%'
+        ));
+        $total += (int) $wpdb->query($wpdb->prepare(
+            "UPDATE {$wpdb->posts} SET post_content = REPLACE(post_content, %s, %s)
+             WHERE post_content LIKE %s",
+            $from, $to, '%' . $wpdb->esc_like($from) . '%'
+        ));
+    }
+    $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_elementor_css', '_elementor_element_cache')");
+    return "Done! Updated $total rows (Request for Consultation / Book Consultation → German). Cache cleared.";
+}
+
+// Auto-run the German CTA fix once per plugin version after deployment
+add_action('admin_init', function () {
+    if (get_option('mm_cta_de_fix_done') !== '1.2.0') {
+        $msg = mm_fix_cta_german();
+        update_option('mm_cta_de_fix_done', '1.2.0');
+        update_option('mm_cta_de_fix_result', $msg);
+    }
+});
+
 add_action('admin_menu', function () {
     add_menu_page('Magic Moon Tools', 'MM Tools', 'manage_options', 'mm-tools', 'mm_tools_page', 'dashicons-hammer', 80);
 });
@@ -53,11 +90,7 @@ function mm_tools_page() {
     $message = '';
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'fix_cta') {
-        global $wpdb;
-        $a = $wpdb->query("UPDATE {$wpdb->postmeta} SET meta_value = REPLACE(meta_value, 'Book Consultation', 'Beratung buchen') WHERE meta_key = '_elementor_data' AND meta_value LIKE '%Book Consultation%'");
-        $b = $wpdb->query("UPDATE {$wpdb->posts} SET post_content = REPLACE(post_content, 'Book Consultation', 'Beratung buchen') WHERE post_content LIKE '%Book Consultation%'");
-        $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_elementor_css', '_elementor_element_cache')");
-        $message = "Done! Updated $a Elementor pages + $b post content rows. Cache cleared.";
+        $message = mm_fix_cta_german();
     }
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'repair_ai1wm') {
