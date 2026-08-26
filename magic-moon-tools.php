@@ -1,9 +1,9 @@
-<?php
+﻿<?php
 /*
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 1.2.0
+Version: 1.3.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -18,9 +18,9 @@ if (!defined('ABSPATH')) exit;
 function mm_repair_ai1wm() {
     $zip = __DIR__ . '/assets/ai1wm-clean.mmzip';
     if (!file_exists($zip)) {
-        return 'ERROR: assets/ai1wm-clean.mmzip not found — deploy the latest version from git first.';
+        return 'ERROR: assets/ai1wm-clean.mmzip not found â€” deploy the latest version from git first.';
     }
-    // unzip_file requires a .zip extension — copy to a temp .zip first
+    // unzip_file requires a .zip extension â€” copy to a temp .zip first
     $tmp = get_temp_dir() . 'ai1wm-clean-' . time() . '.zip';
     if (!copy($zip, $tmp)) {
         return 'ERROR: could not create temp copy of the archive.';
@@ -50,11 +50,30 @@ add_action('admin_init', function () {
  */
 function mm_fix_cta_german() {
     global $wpdb;
+    // Ordered longest-first so longer phrases are replaced before their substrings
     $pairs = array(
-        'Request for Consultation' => 'Beratung anfragen',
-        'Request a Consultation'   => 'Beratung anfragen',
-        'Request Consultation'     => 'Beratung anfragen',
-        'Book Consultation'        => 'Beratung buchen',
+        'Book a Concept Tattoo Consultation' => 'Concept-Tattoo-Beratung buchen',
+        'Book an Intensive Consultation'     => 'Intensivberatung buchen',
+        'Book Your Consultation Slot'        => 'Beratungstermin buchen',
+        'Book Intensive Consultation'        => 'Intensivberatung buchen',
+        'REQUEST FOR CONSULTATION'           => 'BERATUNG ANFRAGEN',
+        'Request For Consultation'           => 'Beratung anfragen',
+        'Request for Consultation'           => 'Beratung anfragen',
+        'Request a Consultation'             => 'Beratung anfragen',
+        'Book Your Consultation'             => 'Beratung buchen',
+        'Request Consultation'               => 'Beratung anfragen',
+        'Book a Consultation'                => 'Beratung buchen',
+        'BOOK CONSULTATION'                  => 'BERATUNG BUCHEN',
+        'Book Consultation'                  => 'Beratung buchen',
+        'Book Your Slot'                     => 'Termin buchen',
+        'Get in Touch'                       => 'Kontakt aufnehmen',
+        'Get In Touch'                       => 'Kontakt aufnehmen',
+        'Learn More'                         => 'Mehr erfahren',
+        'Read More'                          => 'Weiterlesen',
+        'Contact Us'                         => 'Kontaktiere uns',
+        'Get Started'                        => 'Jetzt starten',
+        'View All'                           => 'Alle ansehen',
+        'See More'                           => 'Mehr sehen',
     );
     $total = 0;
     foreach ($pairs as $from => $to) {
@@ -70,14 +89,14 @@ function mm_fix_cta_german() {
         ));
     }
     $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_elementor_css', '_elementor_element_cache')");
-    return "Done! Updated $total rows (Request for Consultation / Book Consultation → German). Cache cleared.";
+    return "Done! Updated $total rows (Request for Consultation / Book Consultation â†’ German). Cache cleared.";
 }
 
 // Auto-run the German CTA fix once per plugin version after deployment
 add_action('admin_init', function () {
-    if (get_option('mm_cta_de_fix_done') !== '1.2.0') {
+    if (get_option('mm_cta_de_fix_done') !== '1.3.0') {
         $msg = mm_fix_cta_german();
-        update_option('mm_cta_de_fix_done', '1.2.0');
+        update_option('mm_cta_de_fix_done', '1.3.0');
         update_option('mm_cta_de_fix_result', $msg);
     }
 });
