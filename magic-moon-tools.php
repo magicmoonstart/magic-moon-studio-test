@@ -18,9 +18,9 @@ if (!defined('ABSPATH')) exit;
 function mm_repair_ai1wm() {
     $zip = __DIR__ . '/assets/ai1wm-clean.mmzip';
     if (!file_exists($zip)) {
-        return 'ERROR: assets/ai1wm-clean.mmzip not found â€” deploy the latest version from git first.';
+        return 'ERROR: assets/ai1wm-clean.mmzip not found - deploy the latest version from git first.';
     }
-    // unzip_file requires a .zip extension â€” copy to a temp .zip first
+    // unzip_file requires a .zip extension - copy to a temp .zip first
     $tmp = get_temp_dir() . 'ai1wm-clean-' . time() . '.zip';
     if (!copy($zip, $tmp)) {
         return 'ERROR: could not create temp copy of the archive.';
@@ -89,7 +89,7 @@ function mm_fix_cta_german() {
         ));
     }
     $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_elementor_css', '_elementor_element_cache')");
-    return "Done! Updated $total rows (Request for Consultation / Book Consultation â†’ German). Cache cleared.";
+    return "Done! Updated $total rows (all English CTA texts -> German). Cache cleared.";
 }
 
 // Auto-run the German CTA fix once per plugin version after deployment
