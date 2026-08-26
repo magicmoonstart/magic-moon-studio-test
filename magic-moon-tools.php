@@ -16,13 +16,20 @@ if (!defined('ABSPATH')) exit;
  * Overwrites the broken copy in wp-content/plugins.
  */
 function mm_repair_ai1wm() {
-    $zip = __DIR__ . '/assets/ai1wm-clean.zip';
+    $zip = __DIR__ . '/assets/ai1wm-clean.mmzip';
     if (!file_exists($zip)) {
-        return 'ERROR: assets/ai1wm-clean.zip not found — deploy the latest version from git first.';
+        return 'ERROR: assets/ai1wm-clean.mmzip not found — deploy the latest version from git first.';
     }
+    // unzip_file requires a .zip extension — copy to a temp .zip first
+    $tmp = get_temp_dir() . 'ai1wm-clean-' . time() . '.zip';
+    if (!copy($zip, $tmp)) {
+        return 'ERROR: could not create temp copy of the archive.';
+    }
+    $zip = $tmp;
     require_once ABSPATH . 'wp-admin/includes/file.php';
     WP_Filesystem();
     $result = unzip_file($zip, WP_PLUGIN_DIR);
+    @unlink($tmp);
     if (is_wp_error($result)) {
         return 'ERROR: ' . $result->get_error_message();
     }
