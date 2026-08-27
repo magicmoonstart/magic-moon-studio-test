@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 1.6.0
+Version: 1.7.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -117,6 +117,80 @@ add_action('admin_init', function () {
         $msg = mm_replace_hero_video();
         update_option('mm_hero_video_done', '1.6.0');
         update_option('mm_hero_video_result', $msg);
+    }
+});
+
+/**
+ * Missing-files check: compares the backup manifest (1,672 upload files)
+ * against what actually exists on the server's disk.
+ * Public read-only endpoint: /wp-json/mm/v1/missing
+ */
+function mm_missing_scan() {
+    $mf = __DIR__ . '/corrections/missing-files/manifest.json';
+    if (!file_exists($mf)) {
+        return array('error' => 'manifest.json not found - deploy latest version first.');
+    }
+    $manifest = json_decode(file_get_contents($mf), true);
+    if (!is_array($manifest)) {
+        return array('error' => 'manifest.json is invalid.');
+    }
+    $u = wp_upload_dir();
+    $base = trailingslashit($u['basedir']);
+    $missing = array();
+    $bytes = 0;
+    foreach ($manifest as $e) {
+        // A file counts as present if it exists as-is OR as its .webp conversion
+        $webp = preg_replace('/\.(jpe?g|png)$/i', '.webp', $e['f']);
+        if (!file_exists($base . $e['f']) && !file_exists($base . $webp)) {
+            $missing[] = $e['f'];
+            $bytes += (int) $e['s'];
+        }
+    }
+    return array(
+        'manifest_total' => count($manifest),
+        'missing_count'  => count($missing),
+        'missing_mb'     => round($bytes / 1048576, 1),
+        'missing'        => $missing,
+    );
+}
+
+add_action('rest_api_init', function () {
+    register_rest_route('mm/v1', '/missing', array(
+        'methods'             => 'GET',
+        'permission_callback' => '__return_true',
+        'callback'            => 'mm_missing_scan',
+    ));
+});
+
+/**
+ * Restore files shipped in corrections/missing-files/files/<rel-path>
+ * into wp-content/uploads. Never overwrites existing files.
+ */
+function mm_restore_missing_files() {
+    $src_root = __DIR__ . '/corrections/missing-files/files';
+    if (!is_dir($src_root)) return 'No restore files shipped yet.';
+    $u = wp_upload_dir();
+    $base = trailingslashit($u['basedir']);
+    $copied = 0;
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($src_root, FilesystemIterator::SKIP_DOTS));
+    foreach ($it as $file) {
+        if (!$file->isFile()) continue;
+        $rel = str_replace('\\', '/', substr($file->getPathname(), strlen($src_root) + 1));
+        $dest = $base . $rel;
+        if (!file_exists($dest)) {
+            wp_mkdir_p(dirname($dest));
+            if (copy($file->getPathname(), $dest)) $copied++;
+        }
+    }
+    return "Restored $copied missing files into uploads.";
+}
+
+// Auto-restore shipped files once per plugin version after deployment
+add_action('admin_init', function () {
+    if (get_option('mm_restore_files_done') !== '1.7.0') {
+        $msg = mm_restore_missing_files();
+        update_option('mm_restore_files_done', '1.7.0');
+        update_option('mm_restore_files_result', $msg);
     }
 });
 
