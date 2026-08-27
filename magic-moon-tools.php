@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 1.7.0
+Version: 1.7.1
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -187,9 +187,9 @@ function mm_restore_missing_files() {
 
 // Auto-restore shipped files once per plugin version after deployment
 add_action('admin_init', function () {
-    if (get_option('mm_restore_files_done') !== '1.7.0') {
+    if (get_option('mm_restore_files_done') !== '1.7.1') {
         $msg = mm_restore_missing_files();
-        update_option('mm_restore_files_done', '1.7.0');
+        update_option('mm_restore_files_done', '1.7.1');
         update_option('mm_restore_files_result', $msg);
     }
 });
