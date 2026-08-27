@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 1.7.1
+Version: 1.8.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -193,6 +193,19 @@ add_action('admin_init', function () {
         update_option('mm_restore_files_result', $msg);
     }
 });
+
+// Responsive fixes: load corrections/responsive-fix/responsive.css on the frontend
+add_action('wp_enqueue_scripts', function () {
+    $css = __DIR__ . '/corrections/responsive-fix/responsive.css';
+    if (file_exists($css)) {
+        wp_enqueue_style(
+            'mm-responsive-fix',
+            plugins_url('corrections/responsive-fix/responsive.css', __FILE__),
+            array(),
+            (string) filemtime($css)
+        );
+    }
+}, 99);
 
 // WebP converter (corrections/webp-conversion) — manual, button-driven, never auto-runs.
 // Loaded defensively: an error in the converter must never break wp-admin.

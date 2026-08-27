@@ -1,0 +1,58 @@
+/*
+ * Responsive fixes — corrections/responsive-fix
+ * Source of truth: live-site audit 2026-08-27 at 375px / 768px / desktop.
+ * Findings: 19px horizontal overflow at tablet caused by the language
+ * switcher (.cpel-switcher__nav) and an off-canvas .svc-card button.
+ * Design is otherwise untouched.
+ */
+
+/* 1. Never allow sideways page scroll (catch-all safety net) */
+html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+/* 2. Language switcher: keep the dropdown inside the viewport */
+.cpel-switcher__nav,
+.cpel-switcher__toggle,
+.cpel-switcher__list {
+    max-width: 100vw;
+}
+@media (max-width: 1024px) {
+    .cpel-switcher__nav {
+        right: 0 !important;
+        left: auto !important;
+    }
+    .cpel-switcher__list {
+        right: 0;
+        left: auto;
+    }
+}
+
+/* 3. Service card button: never wider than its container */
+.svc-card,
+.svc-card * {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* 4. Media safety: images and videos always fit their container */
+img, video, iframe {
+    max-width: 100%;
+    height: auto;
+}
+
+/* 5. Comfortable touch targets on phones (WCAG minimum) */
+@media (max-width: 767px) {
+    .elementor-button,
+    button[type="submit"],
+    input[type="submit"] {
+        min-height: 44px;
+    }
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    textarea {
+        font-size: 16px; /* prevents iOS auto-zoom on focus */
+    }
+}
