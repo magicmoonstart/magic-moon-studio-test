@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 1.5.0
+Version: 1.6.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -85,6 +85,41 @@ add_action('admin_init', function () {
     }
 });
 
+/**
+ * Replace the 414MB 4K hero video on the server with the compressed
+ * 14MB 1080p version from corrections/hero-video. Same filename, so
+ * no database or design changes. Original stays in the .wpress backup.
+ */
+function mm_replace_hero_video() {
+    $src = __DIR__ . '/corrections/hero-video/magic-moon-studio-web-hero-video.mp4';
+    if (!file_exists($src)) {
+        return 'ERROR: corrections/hero-video/magic-moon-studio-web-hero-video.mp4 not found - deploy latest version first.';
+    }
+    $u = wp_upload_dir();
+    $dest = trailingslashit($u['basedir']) . '2026/02/magic-moon-studio-web-hero-video.mp4';
+    if (!file_exists($dest)) {
+        return 'ERROR: hero video not found on server at uploads/2026/02/ - path may differ.';
+    }
+    $old_mb = round(filesize($dest) / 1048576, 1);
+    $new_mb = round(filesize($src) / 1048576, 1);
+    if ($old_mb <= $new_mb) {
+        return "Already replaced: server file is {$old_mb} MB (compressed version is {$new_mb} MB).";
+    }
+    if (!copy($src, $dest)) {
+        return 'ERROR: could not overwrite the video file (permissions?).';
+    }
+    return "SUCCESS: hero video replaced - {$old_mb} MB down to {$new_mb} MB. Same URL, no other changes.";
+}
+
+// Auto-replace hero video once per plugin version after deployment
+add_action('admin_init', function () {
+    if (get_option('mm_hero_video_done') !== '1.6.0') {
+        $msg = mm_replace_hero_video();
+        update_option('mm_hero_video_done', '1.6.0');
+        update_option('mm_hero_video_result', $msg);
+    }
+});
+
 // WebP converter (corrections/webp-conversion) — manual, button-driven, never auto-runs.
 // Loaded defensively: an error in the converter must never break wp-admin.
 try {
@@ -133,6 +168,9 @@ function mm_tools_page() {
         <?php endif; ?>
         <?php if ($auto_result): ?>
             <div class="notice notice-info"><p>Last auto-repair: <?= esc_html($auto_result) ?></p></div>
+        <?php endif; ?>
+        <?php $hero_result = get_option('mm_hero_video_result', ''); if ($hero_result): ?>
+            <div class="notice notice-info"><p>Hero video: <?= esc_html($hero_result) ?></p></div>
         <?php endif; ?>
 
         <h2>Repair All-in-One WP Migration</h2>
