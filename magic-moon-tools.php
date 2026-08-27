@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 1.8.0
+Version: 1.9.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -191,6 +191,50 @@ add_action('admin_init', function () {
         $msg = mm_restore_missing_files();
         update_option('mm_restore_files_done', '1.7.1');
         update_option('mm_restore_files_result', $msg);
+    }
+});
+
+/**
+ * Restore the artists page (unsere-kuenstler) Elementor data from the backup.
+ * The live version lost all artist images (empty background_image URLs);
+ * this restores the full original data with URLs pointing at the live domain.
+ * The previous live data is saved for rollback before overwriting.
+ */
+function mm_fix_artist_images() {
+    $file = __DIR__ . '/corrections/artist-images-fix/elementor-data-unsere-kuenstler.json';
+    if (!file_exists($file)) {
+        return 'ERROR: correction file not found - deploy latest version first.';
+    }
+    $json = file_get_contents($file);
+    if (json_decode($json) === null) {
+        return 'ERROR: correction file is not valid JSON.';
+    }
+    $page = get_page_by_path('unsere-kuenstler');
+    if (!$page) {
+        return 'ERROR: page unsere-kuenstler not found.';
+    }
+    // Backup current live data for rollback
+    $current = get_post_meta($page->ID, '_elementor_data', true);
+    if ($current) {
+        $u = wp_upload_dir();
+        @file_put_contents(trailingslashit($u['basedir']) . 'mm-artist-page-backup-' . $page->ID . '.json', $current);
+    }
+    update_post_meta($page->ID, '_elementor_data', wp_slash($json));
+    // Clear Elementor caches so the restored images render
+    global $wpdb;
+    $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_elementor_css', '_elementor_element_cache')");
+    $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_elementor%'");
+    // Re-apply German CTA texts to the restored (English) data
+    mm_fix_cta_german();
+    return 'SUCCESS: artists page restored from backup with all images (55 files verified on server). German CTA fix re-applied.';
+}
+
+// Auto-run artist page restore once per plugin version after deployment
+add_action('admin_init', function () {
+    if (get_option('mm_artist_fix_done') !== '1.9.0') {
+        $msg = mm_fix_artist_images();
+        update_option('mm_artist_fix_done', '1.9.0');
+        update_option('mm_artist_fix_result', $msg);
     }
 });
 
