@@ -1,0 +1,27 @@
+# Ignore large backup files — not for deployment
+*.wpress
+*.zip
+*.sql
+
+# WordPress core (already on server, no need to push)
+wp-admin/
+wp-includes/
+wp-login.php
+wp-blog-header.php
+wp-comments-post.php
+wp-cron.php
+wp-links-opml.php
+wp-load.php
+wp-mail.php
+wp-settings.php
+wp-signup.php
+wp-trackback.php
+xmlrpc.php
+
+# Sensitive files
+wp-config.php
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
