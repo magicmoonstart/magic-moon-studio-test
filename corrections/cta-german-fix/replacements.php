@@ -27,6 +27,10 @@ return array(
     'Book Your Slot'                     => 'Termin buchen',
     'Get in Touch'                       => 'Kontakt aufnehmen',
     'Get In Touch'                       => 'Kontakt aufnehmen',
+    // Service-card buttons; MySQL REPLACE is case-sensitive, and the second
+    // spelling is a typo present in the original design data.
+    'contact us'                         => 'Kontaktiere uns',
+    'contac us'                          => 'Kontaktiere uns',
     'Learn More'                         => 'Mehr erfahren',
     'Read More'                          => 'Weiterlesen',
     'Contact Us'                         => 'Kontaktiere uns',

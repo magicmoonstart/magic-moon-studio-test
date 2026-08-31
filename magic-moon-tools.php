@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 3.0.0
+Version: 3.1.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -239,7 +239,7 @@ function mm_state_report() {
     $pages = array('homepage' => $home_id);
     if ($artist) $pages['artists'] = $artist->ID;
 
-    $report = array('plugin_version' => '3.0.0', 'pages' => array());
+    $report = array('plugin_version' => '3.1.0', 'pages' => array());
     foreach ($pages as $label => $pid) {
         $raw = get_post_meta($pid, '_elementor_data', true);
         if (!is_string($raw)) $raw = wp_json_encode($raw);
@@ -389,12 +389,13 @@ function mm_fix_homepage() {
     // Re-apply German CTA texts (the backup data still has English buttons)
     mm_fix_cta_german();
     return 'SUCCESS: homepage (post ' . $home_id . ') restored — ' . $w['msg']
-         . '. Adds back 16 service headings, 16 buttons, 13 text blocks, 3 images. German CTA re-applied.';
+         . '. All 16 service cards now use free core containers instead of the 8 Elementor Pro '
+         . 'nested-carousel widgets that rendered empty. German CTA re-applied.';
 }
 
 // Auto-run homepage restore — retries until it genuinely succeeds
 add_action('admin_init', function () {
-    mm_run_once('mm_home_fix_done', '3.0.0', 'mm_fix_homepage', 'mm_home_fix_result');
+    mm_run_once('mm_home_fix_done', '3.1.0', 'mm_fix_homepage', 'mm_home_fix_result');
 });
 
 /**
