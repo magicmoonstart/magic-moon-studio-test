@@ -3,13 +3,80 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 2.3.0
+Version: 3.0.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
 */
 
 if (!defined('ABSPATH')) exit;
+
+/**
+ * Run a one-time task, but ONLY mark it done when it actually SUCCEEDED.
+ *
+ * The previous version marked every task done unconditionally. Deployer for Git
+ * writes files one at a time, so the first admin_init after a deploy could run
+ * before a correction file had synced: the task returned "ERROR: not found",
+ * the gate was locked as done anyway, and it never retried. That is why the
+ * homepage and artist restores never reached the database.
+ */
+function mm_run_once($done_key, $version, $fn, $result_key) {
+    if (get_option($done_key) === $version) return;
+    $msg = call_user_func($fn);
+    update_option($result_key, $msg);
+    if (is_string($msg) && stripos($msg, 'ERROR') === false) {
+        update_option($done_key, $version);   // lock in only on success
+    }
+}
+
+/**
+ * Write Elementor page data and VERIFY it actually landed in the database.
+ * Returns array(ok => bool, msg => string).
+ */
+function mm_write_elementor_data($post_id, $json, $label) {
+    if (json_decode($json) === null) {
+        return array('ok' => false, 'msg' => "ERROR: $label correction file is not valid JSON.");
+    }
+    $want = json_decode($json, true);
+    if (!is_array($want)) {
+        return array('ok' => false, 'msg' => "ERROR: $label data did not decode to an array.");
+    }
+
+    // Keep a rollback copy of whatever is live right now
+    $current = get_post_meta($post_id, '_elementor_data', true);
+    if ($current) {
+        $u = wp_upload_dir();
+        @file_put_contents(trailingslashit($u['basedir']) . 'mm-rollback-' . $post_id . '.json', $current);
+    }
+
+    update_post_meta($post_id, '_elementor_data', wp_slash($json));
+
+    // READ BACK and confirm — never trust the write blindly
+    $stored = get_post_meta($post_id, '_elementor_data', true);
+    if (is_string($stored)) {
+        $got = json_decode($stored, true);
+    } else {
+        $got = $stored;
+    }
+    if (!is_array($got)) {
+        return array('ok' => false, 'msg' => "ERROR: $label write failed — stored value is not readable JSON (wrote " . strlen($json) . " bytes).");
+    }
+    // Compare element counts as a structural check
+    $count_widgets = function ($nodes) use (&$count_widgets) {
+        $n = 0;
+        foreach ((array) $nodes as $node) {
+            if (isset($node['elType'])) $n++;
+            if (!empty($node['elements'])) $n += $count_widgets($node['elements']);
+        }
+        return $n;
+    };
+    $want_n = $count_widgets($want);
+    $got_n  = $count_widgets($got);
+    if ($got_n !== $want_n) {
+        return array('ok' => false, 'msg' => "ERROR: $label write incomplete — expected $want_n elements, database has $got_n.");
+    }
+    return array('ok' => true, 'msg' => "verified $got_n elements stored");
+}
 
 /**
  * Restore All-in-One WP Migration from the clean bundled zip.
@@ -111,13 +178,9 @@ function mm_replace_hero_video() {
     return "SUCCESS: hero video replaced - {$old_mb} MB down to {$new_mb} MB. Same URL, no other changes.";
 }
 
-// Auto-replace hero video once per plugin version after deployment
+// Auto-replace hero video — retries until it genuinely succeeds
 add_action('admin_init', function () {
-    if (get_option('mm_hero_video_done') !== '1.6.0') {
-        $msg = mm_replace_hero_video();
-        update_option('mm_hero_video_done', '1.6.0');
-        update_option('mm_hero_video_result', $msg);
-    }
+    mm_run_once('mm_hero_video_done', '1.6.0', 'mm_replace_hero_video', 'mm_hero_video_result');
 });
 
 /**
@@ -160,7 +223,54 @@ add_action('rest_api_init', function () {
         'permission_callback' => '__return_true',
         'callback'            => 'mm_missing_scan',
     ));
+    // Read-only diagnostic: reports what is ACTUALLY stored in the database,
+    // so a fix can be verified instead of assumed.
+    register_rest_route('mm/v1', '/state', array(
+        'methods'             => 'GET',
+        'permission_callback' => '__return_true',
+        'callback'            => 'mm_state_report',
+    ));
 });
+
+function mm_state_report() {
+    $home_id = (int) get_option('page_on_front');
+    if (!$home_id) $home_id = 10;
+    $artist  = get_page_by_path('unsere-kuenstler');
+    $pages = array('homepage' => $home_id);
+    if ($artist) $pages['artists'] = $artist->ID;
+
+    $report = array('plugin_version' => '3.0.0', 'pages' => array());
+    foreach ($pages as $label => $pid) {
+        $raw = get_post_meta($pid, '_elementor_data', true);
+        if (!is_string($raw)) $raw = wp_json_encode($raw);
+        $count = function ($type) use ($raw) {
+            return preg_match_all('/"widgetType":"' . preg_quote($type, '/') . '"/', (string) $raw);
+        };
+        $report['pages'][$label] = array(
+            'post_id'       => $pid,
+            'stored_bytes'  => strlen((string) $raw),
+            'json_valid'    => json_decode($raw) !== null,
+            'headings'      => $count('heading'),
+            'buttons'       => $count('button'),
+            'text_editors'  => $count('text-editor'),
+            'carousels'     => $count('nested-carousel'),
+            'bg_images'     => preg_match_all('/"background_image"/', (string) $raw),
+            'empty_bg'      => preg_match_all('/"background_image":\{"url":""/', (string) $raw),
+        );
+    }
+    $report['fix_status'] = array(
+        'home_done'     => get_option('mm_home_fix_done', '(never)'),
+        'home_result'   => get_option('mm_home_fix_result', '(none)'),
+        'artist_done'   => get_option('mm_artist_fix_done', '(never)'),
+        'artist_result' => get_option('mm_artist_fix_result', '(none)'),
+    );
+    $report['correction_files'] = array(
+        'homepage' => file_exists(__DIR__ . '/corrections/homepage-fix/elementor-data-home-post10.json'),
+        'artists'  => file_exists(__DIR__ . '/corrections/artist-images-fix/elementor-data-unsere-kuenstler.json'),
+        'portraits_css' => file_exists(__DIR__ . '/corrections/artist-images-fix/artist-portraits.css'),
+    );
+    return $report;
+}
 
 /**
  * Restore files shipped in corrections/missing-files/files/<rel-path>
@@ -185,13 +295,9 @@ function mm_restore_missing_files() {
     return "Restored $copied missing files into uploads.";
 }
 
-// Auto-restore shipped files once per plugin version after deployment
+// Auto-restore shipped files — retries until it genuinely succeeds
 add_action('admin_init', function () {
-    if (get_option('mm_restore_files_done') !== '1.7.1') {
-        $msg = mm_restore_missing_files();
-        update_option('mm_restore_files_done', '1.7.1');
-        update_option('mm_restore_files_result', $msg);
-    }
+    mm_run_once('mm_restore_files_done', '1.7.1', 'mm_restore_missing_files', 'mm_restore_files_result');
 });
 
 /**
@@ -238,34 +344,23 @@ function mm_fix_artist_images() {
         return 'ERROR: correction file not found - deploy latest version first.';
     }
     $json = file_get_contents($file);
-    if (json_decode($json) === null) {
-        return 'ERROR: correction file is not valid JSON.';
-    }
     $page = get_page_by_path('unsere-kuenstler');
     if (!$page) {
         return 'ERROR: page unsere-kuenstler not found.';
     }
-    // Backup current live data for rollback
-    $current = get_post_meta($page->ID, '_elementor_data', true);
-    if ($current) {
-        $u = wp_upload_dir();
-        @file_put_contents(trailingslashit($u['basedir']) . 'mm-artist-page-backup-' . $page->ID . '.json', $current);
-    }
-    update_post_meta($page->ID, '_elementor_data', wp_slash($json));
-    // Force a full CSS rebuild — stale files were hiding 5 artist portraits
+
+    $w = mm_write_elementor_data($page->ID, $json, 'artists page');
+    if (!$w['ok']) return $w['msg'];
+
     $removed = mm_force_elementor_css_rebuild();
-    // Re-apply German CTA texts to the restored (English) data
     mm_fix_cta_german();
-    return 'SUCCESS: artists page restored — all 9 card portraits set (Joern, Zsolt, Markus, Ines, Samu, Gabor, Laszlo, Nelida, Kim). Deleted ' . $removed . ' stale CSS files so backgrounds regenerate. German CTA re-applied.';
+    return 'SUCCESS: artists page restored — ' . $w['msg']
+         . '; all 9 card portraits set. Deleted ' . $removed . ' stale CSS files. German CTA re-applied.';
 }
 
-// Auto-run artist page restore once per plugin version after deployment
+// Auto-run artist page restore — retries until it genuinely succeeds
 add_action('admin_init', function () {
-    if (get_option('mm_artist_fix_done') !== '2.2.0') {
-        $msg = mm_fix_artist_images();
-        update_option('mm_artist_fix_done', '2.2.0');
-        update_option('mm_artist_fix_result', $msg);
-    }
+    mm_run_once('mm_artist_fix_done', '3.0.0', 'mm_fix_artist_images', 'mm_artist_fix_result');
 });
 
 /**
@@ -280,38 +375,26 @@ function mm_fix_homepage() {
         return 'ERROR: homepage correction file not found - deploy latest version first.';
     }
     $json = file_get_contents($file);
-    if (json_decode($json) === null) {
-        return 'ERROR: homepage correction file is not valid JSON.';
-    }
     // Front page id (fallback to 10 if not set)
     $home_id = (int) get_option('page_on_front');
     if (!$home_id) $home_id = 10;
-    $page = get_post($home_id);
-    if (!$page) {
+    if (!get_post($home_id)) {
         return 'ERROR: homepage post ' . $home_id . ' not found.';
     }
-    // Backup current live data for rollback
-    $current = get_post_meta($home_id, '_elementor_data', true);
-    if ($current) {
-        $u = wp_upload_dir();
-        @file_put_contents(trailingslashit($u['basedir']) . 'mm-home-page-backup-' . $home_id . '.json', $current);
-    }
-    update_post_meta($home_id, '_elementor_data', wp_slash($json));
-    global $wpdb;
-    $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_elementor_css', '_elementor_element_cache')");
-    $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_elementor%'");
-    // Re-apply German CTA texts to the restored data
+
+    $w = mm_write_elementor_data($home_id, $json, 'homepage');
+    if (!$w['ok']) return $w['msg'];
+
+    mm_force_elementor_css_rebuild();
+    // Re-apply German CTA texts (the backup data still has English buttons)
     mm_fix_cta_german();
-    return 'SUCCESS: homepage (post ' . $home_id . ') restored from backup with full design. German CTA fix re-applied. Old data saved as mm-home-page-backup-' . $home_id . '.json';
+    return 'SUCCESS: homepage (post ' . $home_id . ') restored — ' . $w['msg']
+         . '. Adds back 16 service headings, 16 buttons, 13 text blocks, 3 images. German CTA re-applied.';
 }
 
-// Auto-run homepage restore once per plugin version after deployment
+// Auto-run homepage restore — retries until it genuinely succeeds
 add_action('admin_init', function () {
-    if (get_option('mm_home_fix_done') !== '2.0.0') {
-        $msg = mm_fix_homepage();
-        update_option('mm_home_fix_done', '2.0.0');
-        update_option('mm_home_fix_result', $msg);
-    }
+    mm_run_once('mm_home_fix_done', '3.0.0', 'mm_fix_homepage', 'mm_home_fix_result');
 });
 
 /**
@@ -344,13 +427,9 @@ function mm_replace_portfolio_videos() {
     return $done ? 'SUCCESS: replaced ' . count($done) . ' videos - ' . implode(', ', $done) : 'Portfolio videos already compressed.';
 }
 
-// Auto-replace portfolio videos once per plugin version after deployment
+// Auto-replace portfolio videos — retries until it genuinely succeeds
 add_action('admin_init', function () {
-    if (get_option('mm_portfolio_videos_done') !== '2.1.0') {
-        $msg = mm_replace_portfolio_videos();
-        update_option('mm_portfolio_videos_done', '2.1.0');
-        update_option('mm_portfolio_videos_result', $msg);
-    }
+    mm_run_once('mm_portfolio_videos_done', '2.1.0', 'mm_replace_portfolio_videos', 'mm_portfolio_videos_result');
 });
 
 // Frontend stylesheets from corrections/ — loaded late so they win the cascade.
@@ -400,6 +479,10 @@ function mm_tools_page() {
         $message = mm_fix_artist_images();
     }
 
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'fix_homepage') {
+        $message = mm_fix_homepage();
+    }
+
     $webp_auto = false;
     $webp_available = function_exists('mm_webp_convert_batch');
     if ($webp_available) {
@@ -430,8 +513,13 @@ function mm_tools_page() {
             <div class="notice notice-info"><p>Hero video: <?= esc_html($hero_result) ?></p></div>
         <?php endif; ?>
 
-        <h2>Artist Cards &amp; Elementor CSS</h2>
-        <p>Restores all 9 artist card portraits and forces a full CSS rebuild.</p>
+        <h2>Page Restores &amp; Elementor CSS</h2>
+        <p>Homepage: restores 16 service headings, 16 buttons, 13 text blocks, 3 images.<br>
+           Artists: restores all 9 card portraits. Each write is verified against the database.</p>
+        <form method="post" style="display:inline-block;margin-right:8px;">
+            <input type="hidden" name="mm_action" value="fix_homepage">
+            <?php submit_button('Fix Homepage', 'primary', 'submit', false); ?>
+        </form>
         <form method="post" style="display:inline-block;margin-right:8px;">
             <input type="hidden" name="mm_action" value="fix_artists">
             <?php submit_button('Fix Artist Cards', 'primary', 'submit', false); ?>
@@ -440,8 +528,11 @@ function mm_tools_page() {
             <input type="hidden" name="mm_action" value="rebuild_css">
             <?php submit_button('Rebuild Elementor CSS', 'secondary', 'submit', false); ?>
         </form>
+        <?php $hr = get_option('mm_home_fix_result', ''); if ($hr): ?>
+            <p style="color:#666;font-size:12px;margin:8px 0 0;"><strong>Homepage:</strong> <?= esc_html($hr) ?></p>
+        <?php endif; ?>
         <?php $ar = get_option('mm_artist_fix_result', ''); if ($ar): ?>
-            <p style="color:#666;font-size:12px;margin-top:8px;"><?= esc_html($ar) ?></p>
+            <p style="color:#666;font-size:12px;margin:4px 0 0;"><strong>Artists:</strong> <?= esc_html($ar) ?></p>
         <?php endif; ?>
 
         <hr>
