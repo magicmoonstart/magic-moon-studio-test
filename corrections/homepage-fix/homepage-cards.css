@@ -1,0 +1,59 @@
+/*
+ * Homepage service-card backgrounds — corrections/homepage-fix
+ *
+ * WHY THIS FILE EXISTS
+ * All 16 service cards carry a background_image in the page data, but Elementor's
+ * generated stylesheet (uploads/elementor/css/post-10.css) only ever wrote rules
+ * for 13 of them. Three containers were skipped every time the CSS regenerated,
+ * so those cards rendered with no photo:
+ *
+ *   3b4b7dd  Partner Studio       -> 2026/04/Screenshot-2026-04-23-164016-1-1.png
+ *   27664a7  Tattoo Supply Model  -> 2026/04/Rectangle-61-1.png
+ *   56df7bf  Support for Growth   -> 2026/03/Rectangle-18-3.png
+ *
+ * All three files were verified present on the server. These rules paint them
+ * directly, matching the properties Elementor uses for the other 13 cards.
+ *
+ * SPECIFICITY NOTE
+ * Elementor lazy-loads container backgrounds with
+ *   .e-con.e-parent:nth-of-type(n+4):not(.e-lazyloaded):not(.e-no-lazyload)
+ *   { background-image: none !important }
+ * which is (0,5,0). Each selector below uses six classes so it outranks that
+ * rule; these three images therefore load immediately rather than on scroll,
+ * which is a fair trade for three files.
+ */
+
+/* Partner Studio */
+.elementor.elementor-10 .e-con.e-child.elementor-element.elementor-element-3b4b7dd {
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/04/Screenshot-2026-04-23-164016-1-1.png") !important;
+    background-size: cover !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+}
+
+/* Tattoo Supply Model */
+.elementor.elementor-10 .e-con.e-child.elementor-element.elementor-element-27664a7 {
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/04/Rectangle-61-1.png") !important;
+    background-size: cover !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+}
+
+/* Support for Growth */
+.elementor.elementor-10 .e-con.e-child.elementor-element.elementor-element-56df7bf {
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/03/Rectangle-18-3.png") !important;
+    background-size: cover !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+}
+
+/*
+ * The 16 cards sit two-per-row (converted from the Elementor Pro carousels,
+ * which showed 2 of 2 slides, so the grid matches the original layout).
+ * Keep them equal height and stack them on phones.
+ */
+@media (min-width: 768px) {
+    .elementor.elementor-10 .e-con.elementor-element[class*="elementor-element-mmgrd"] > .e-con {
+        align-self: stretch;
+    }
+}
