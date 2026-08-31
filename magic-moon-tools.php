@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 4.0.0
+Version: 4.1.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -76,6 +76,37 @@ function mm_write_elementor_data($post_id, $json, $label) {
         return array('ok' => false, 'msg' => "ERROR: $label write incomplete — expected $want_n elements, database has $got_n.");
     }
     return array('ok' => true, 'msg' => "verified $got_n elements stored");
+}
+
+/**
+ * Apply the German CTA replacements to ONE post only.
+ *
+ * mm_fix_cta_german() runs 24 replacement pairs across the whole postmeta and
+ * posts tables — roughly 48 full-table queries. Calling that from every page
+ * restore meant a single admin_init could fire it four times and risk hitting
+ * PHP's execution limit part-way through, leaving later fixes unrun. This
+ * scoped version touches only the page that was just written.
+ */
+function mm_fix_cta_for_post($post_id) {
+    $map_file = __DIR__ . '/corrections/cta-german-fix/replacements.php';
+    if (!file_exists($map_file)) return 0;
+    $pairs = include $map_file;
+    if (!is_array($pairs) || empty($pairs)) return 0;
+
+    $data = get_post_meta($post_id, '_elementor_data', true);
+    if (!is_string($data) || $data === '') return 0;
+
+    $changed = 0;
+    foreach ($pairs as $from => $to) {
+        if (strpos($data, $from) !== false) {
+            $data = str_replace($from, $to, $data);
+            $changed++;
+        }
+    }
+    if ($changed) {
+        update_post_meta($post_id, '_elementor_data', wp_slash($data));
+    }
+    return $changed;
 }
 
 /**
@@ -243,7 +274,7 @@ function mm_state_report() {
     if ($home_en) $pages['home_en']  = $home_en->ID;
     if ($blogs)   $pages['blogs']    = $blogs->ID;
 
-    $report = array('plugin_version' => '4.0.0', 'pages' => array());
+    $report = array('plugin_version' => '4.1.0', 'pages' => array());
     foreach ($pages as $label => $pid) {
         $raw = get_post_meta($pid, '_elementor_data', true);
         if (!is_string($raw)) $raw = wp_json_encode($raw);
@@ -361,7 +392,7 @@ function mm_fix_artist_images() {
     if (!$w['ok']) return $w['msg'];
 
     $removed = mm_force_elementor_css_rebuild();
-    mm_fix_cta_german();
+    mm_fix_cta_for_post($page->ID);
     return 'SUCCESS: artists page restored — ' . $w['msg']
          . '; all 9 card portraits set. Deleted ' . $removed . ' stale CSS files. German CTA re-applied.';
 }
@@ -394,8 +425,8 @@ function mm_fix_homepage() {
     if (!$w['ok']) return $w['msg'];
 
     mm_force_elementor_css_rebuild();
-    // Re-apply German CTA texts (the backup data still has English buttons)
-    mm_fix_cta_german();
+    // Re-apply German CTA texts to this page only (cheap, scoped)
+    mm_fix_cta_for_post($home_id);
     return 'SUCCESS: homepage (post ' . $home_id . ') restored — ' . $w['msg']
          . '. All 16 service cards now use free core containers instead of the 8 Elementor Pro '
          . 'nested-carousel widgets that rendered empty. German CTA re-applied.';
@@ -403,7 +434,7 @@ function mm_fix_homepage() {
 
 // Auto-run homepage restore — retries until it genuinely succeeds
 add_action('admin_init', function () {
-    mm_run_once('mm_home_fix_done', '4.0.0', 'mm_fix_homepage', 'mm_home_fix_result');
+    mm_run_once('mm_home_fix_done', '4.1.0', 'mm_fix_homepage', 'mm_home_fix_result');
 });
 
 /**
@@ -432,7 +463,7 @@ function mm_fix_homepage_en() {
 }
 
 add_action('admin_init', function () {
-    mm_run_once('mm_home_en_fix_done', '4.0.0', 'mm_fix_homepage_en', 'mm_home_en_fix_result');
+    mm_run_once('mm_home_en_fix_done', '4.1.0', 'mm_fix_homepage_en', 'mm_home_en_fix_result');
 });
 
 /**
@@ -456,14 +487,92 @@ function mm_fix_blogs() {
     if (get_post_meta($post_id, '_elementor_edit_mode', true) !== 'builder') {
         update_post_meta($post_id, '_elementor_edit_mode', 'builder');
     }
+
+    /*
+     * THE REASON THE FIRST ATTEMPT COULD NEVER WORK
+     * This page was assigned as WordPress's "Posts page" (Settings > Reading).
+     * For that page WordPress ignores the page's own content completely and
+     * renders the theme's post archive instead — body class "blog", no
+     * elementor-<id> wrapper. So no amount of Elementor data would ever show.
+     * Releasing the assignment lets the page render its own content; the post
+     * listing itself is provided by [mm_blog_archive]. The previous value is
+     * stored so this can be put back.
+     */
+    $note = '';
+    if ((int) get_option('page_for_posts') === (int) $post_id) {
+        update_option('mm_prev_page_for_posts', (int) $post_id);
+        update_option('page_for_posts', 0);
+        $note = ' Released this page from Settings > Reading > "Posts page" (old value saved as mm_prev_page_for_posts) so WordPress renders its content instead of the theme archive.';
+    }
+
     mm_force_elementor_css_rebuild();
     return 'SUCCESS: blogs page (post ' . $post_id . ') rebuilt — ' . $w['msg']
-         . '. Pro archive-posts replaced with the free [mm_blog_archive] shortcode.';
+         . '. Pro archive-posts replaced with the free [mm_blog_archive] shortcode.' . $note;
 }
 
 add_action('admin_init', function () {
-    mm_run_once('mm_blogs_fix_done', '4.0.0', 'mm_fix_blogs', 'mm_blogs_fix_result');
+    mm_run_once('mm_blogs_fix_done', '4.1.0', 'mm_fix_blogs', 'mm_blogs_fix_result');
 });
+
+/**
+ * Rebuild attachment metadata so responsive srcset variants come back.
+ *
+ * On pages like ueber-uns / job the full-size images all render, but the
+ * -150x150 / -300x298 / -1024x506 variants were absent from srcset: the
+ * thumbnail FILES exist on disk (restored earlier) while the attachment
+ * metadata has no 'sizes' entries for them, so WordPress cannot advertise
+ * them. This regenerates the metadata for such attachments.
+ *
+ * Batched and button-driven only — regeneration is CPU-heavy and must never
+ * run inside admin_init.
+ */
+function mm_rebuild_image_metadata($limit = 40) {
+    global $wpdb;
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+
+    $ids = $wpdb->get_col($wpdb->prepare(
+        "SELECT p.ID FROM {$wpdb->posts} p
+         LEFT JOIN {$wpdb->postmeta} d ON d.post_id = p.ID AND d.meta_key = '_mm_meta_rebuilt'
+         WHERE p.post_type = 'attachment'
+           AND p.post_mime_type IN ('image/jpeg','image/png','image/webp')
+           AND d.meta_id IS NULL
+         ORDER BY p.ID ASC LIMIT %d",
+        (int) $limit
+    ));
+
+    if (empty($ids)) {
+        return 'All image metadata already rebuilt.';
+    }
+
+    $u = wp_upload_dir();
+    $base = trailingslashit($u['basedir']);
+    $fixed = 0; $skipped = 0;
+
+    foreach ($ids as $id) {
+        $rel = get_post_meta($id, '_wp_attached_file', true);
+        $abs = $base . $rel;
+        if (!$rel || !file_exists($abs)) { update_post_meta($id, '_mm_meta_rebuilt', 'missing'); $skipped++; continue; }
+
+        $meta = wp_generate_attachment_metadata($id, $abs);
+        if (is_array($meta) && !empty($meta['sizes'])) {
+            wp_update_attachment_metadata($id, $meta);
+            $fixed++;
+        } else {
+            $skipped++;
+        }
+        update_post_meta($id, '_mm_meta_rebuilt', '1');
+    }
+
+    $remaining = (int) $wpdb->get_var(
+        "SELECT COUNT(*) FROM {$wpdb->posts} p
+         LEFT JOIN {$wpdb->postmeta} d ON d.post_id = p.ID AND d.meta_key = '_mm_meta_rebuilt'
+         WHERE p.post_type = 'attachment'
+           AND p.post_mime_type IN ('image/jpeg','image/png','image/webp')
+           AND d.meta_id IS NULL"
+    );
+
+    return "Rebuilt metadata for $fixed images ($skipped skipped). $remaining still to go — click again to continue.";
+}
 
 /**
  * [mm_blog_archive columns="2"] — free replacement for Elementor Pro's
@@ -626,6 +735,10 @@ function mm_tools_page() {
         $message = mm_fix_blogs();
     }
 
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'rebuild_img_meta') {
+        $message = mm_rebuild_image_metadata(40);
+    }
+
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'fix_all') {
         $parts = array(
             'Homepage DE: ' . mm_fix_homepage(),
@@ -689,9 +802,13 @@ function mm_tools_page() {
             <input type="hidden" name="mm_action" value="fix_artists">
             <?php submit_button('Fix Artist Cards', 'primary', 'submit', false); ?>
         </form>
-        <form method="post" style="display:inline-block;">
+        <form method="post" style="display:inline-block;margin-right:8px;">
             <input type="hidden" name="mm_action" value="rebuild_css">
             <?php submit_button('Rebuild Elementor CSS', 'secondary', 'submit', false); ?>
+        </form>
+        <form method="post" style="display:inline-block;">
+            <input type="hidden" name="mm_action" value="rebuild_img_meta">
+            <?php submit_button('Rebuild Image Metadata (srcset)', 'secondary', 'submit', false); ?>
         </form>
         <?php $hr = get_option('mm_home_fix_result', ''); if ($hr): ?>
             <p style="color:#666;font-size:12px;margin:8px 0 0;"><strong>Homepage:</strong> <?= esc_html($hr) ?></p>
