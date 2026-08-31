@@ -48,12 +48,38 @@
 }
 
 /*
- * The 16 cards sit two-per-row (converted from the Elementor Pro carousels,
- * which showed 2 of 2 slides, so the grid matches the original layout).
- * Keep them equal height and stack them on phones.
+ * TWO-PER-ROW LAYOUT
+ *
+ * The 16 cards replaced 8 Elementor Pro carousels. Measured against the live
+ * reference (dev.doinikbazarkari.com at 1440x900), each carousel put its two
+ * cards side by side at x=88 and x=718 with a total height of 454px.
+ *
+ * Setting the children to width:50% did NOT reproduce that: 50% + 20px gap +
+ * 50% overflows the 1250px container, so the second card wrapped onto a new
+ * line and every section was roughly twice as tall as it should be.
+ *
+ * Using flex:1 1 0 lets both cards divide the row after the gap is taken out,
+ * which measures 458px tall with cards at x=98 and x=723 — matching the
+ * reference. Below 768px they stack full width, as the original did.
  */
 @media (min-width: 768px) {
-    .elementor.elementor-10 .e-con.elementor-element[class*="elementor-element-mmgrd"] > .e-con {
+    .elementor.elementor-10 .e-con[class*="elementor-element-mmgrd"] {
+        flex-wrap: nowrap !important;
+    }
+    .elementor.elementor-10 .e-con[class*="elementor-element-mmgrd"] > .e-con {
+        flex: 1 1 0 !important;
+        width: auto !important;
+        min-width: 0 !important;
         align-self: stretch;
+    }
+}
+
+@media (max-width: 767px) {
+    .elementor.elementor-10 .e-con[class*="elementor-element-mmgrd"] {
+        flex-wrap: wrap !important;
+    }
+    .elementor.elementor-10 .e-con[class*="elementor-element-mmgrd"] > .e-con {
+        flex: 1 1 100% !important;
+        width: 100% !important;
     }
 }
