@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 2.0.0
+Version: 2.1.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -281,6 +281,45 @@ add_action('admin_init', function () {
         $msg = mm_fix_homepage();
         update_option('mm_home_fix_done', '2.0.0');
         update_option('mm_home_fix_result', $msg);
+    }
+});
+
+/**
+ * Replace the heavy artist portfolio videos (26-53MB each) on the server
+ * with compressed 1.5-2.6MB versions from corrections/portfolio-videos.
+ * Same filenames/paths, so no DB or design changes. The big videos were
+ * failing to load (net::ERR_ABORTED / 503), leaving artist cards blank.
+ */
+function mm_replace_portfolio_videos() {
+    $src_root = __DIR__ . '/corrections/portfolio-videos';
+    if (!is_dir($src_root)) return 'No portfolio videos shipped yet.';
+    $u = wp_upload_dir();
+    $base = trailingslashit($u['basedir']);
+    $done = array();
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($src_root, FilesystemIterator::SKIP_DOTS));
+    foreach ($it as $file) {
+        if (!$file->isFile()) continue;
+        $rel = str_replace('\\', '/', substr($file->getPathname(), strlen($src_root) + 1));
+        $dest = $base . $rel;
+        if (!file_exists($dest)) { wp_mkdir_p(dirname($dest)); }
+        $old = file_exists($dest) ? round(filesize($dest) / 1048576, 1) : 0;
+        $new = round($file->getSize() / 1048576, 1);
+        // Only replace if the server file is bigger (i.e. still the heavy original)
+        if ($old === 0 || $old > $new) {
+            if (copy($file->getPathname(), $dest)) {
+                $done[] = basename($rel) . " ({$old}->{$new}MB)";
+            }
+        }
+    }
+    return $done ? 'SUCCESS: replaced ' . count($done) . ' videos - ' . implode(', ', $done) : 'Portfolio videos already compressed.';
+}
+
+// Auto-replace portfolio videos once per plugin version after deployment
+add_action('admin_init', function () {
+    if (get_option('mm_portfolio_videos_done') !== '2.1.0') {
+        $msg = mm_replace_portfolio_videos();
+        update_option('mm_portfolio_videos_done', '2.1.0');
+        update_option('mm_portfolio_videos_result', $msg);
     }
 });
 
