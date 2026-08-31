@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 4.1.0
+Version: 4.2.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -274,7 +274,7 @@ function mm_state_report() {
     if ($home_en) $pages['home_en']  = $home_en->ID;
     if ($blogs)   $pages['blogs']    = $blogs->ID;
 
-    $report = array('plugin_version' => '4.1.0', 'pages' => array());
+    $report = array('plugin_version' => '4.2.0', 'pages' => array());
     foreach ($pages as $label => $pid) {
         $raw = get_post_meta($pid, '_elementor_data', true);
         if (!is_string($raw)) $raw = wp_json_encode($raw);
@@ -575,6 +575,82 @@ function mm_rebuild_image_metadata($limit = 40) {
 }
 
 /**
+ * Restore the blog posts' featured images.
+ *
+ * The migration lost these: every post came across with featured_media = 0 and
+ * the three attachment RECORDS were gone entirely (REST returned
+ * rest_post_invalid_id), even though the image FILES were still on disk. The
+ * backup contains exactly four _thumbnail_id rows, so this is the whole scope.
+ * Attachment ids and file paths below are taken verbatim from the backup.
+ */
+function mm_fix_post_thumbnails() {
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+    $u    = wp_upload_dir();
+    $base = trailingslashit($u['basedir']);
+
+    // backup: _wp_attached_file rows for the three attachments
+    $files = array(
+        371  => '2026/02/cards-services.png',
+        374  => '2026/02/cards-services-2.png',
+        5837 => '2026/02/Rectangle-41.png',
+    );
+    // backup: the only four _thumbnail_id rows (post id => attachment id)
+    $thumbs = array(370 => 5837, 373 => 374, 2709 => 374, 2711 => 371);
+
+    $resolved = array();   // original attachment id => id actually usable here
+    $created = 0; $reused = 0; $problems = array();
+
+    foreach ($files as $aid => $rel) {
+        $abs = $base . $rel;
+        if (!file_exists($abs)) { $problems[] = "file missing: $rel"; continue; }
+
+        // already present under its original id?
+        if (get_post($aid) && get_post_type($aid) === 'attachment') {
+            $resolved[$aid] = $aid; $reused++; continue;
+        }
+        // or present under a different id for the same file?
+        $existing = get_posts(array(
+            'post_type' => 'attachment', 'posts_per_page' => 1, 'fields' => 'ids',
+            'meta_query' => array(array('key' => '_wp_attached_file', 'value' => $rel)),
+        ));
+        if (!empty($existing)) { $resolved[$aid] = (int) $existing[0]; $reused++; continue; }
+
+        $type = wp_check_filetype(basename($abs));
+        $new  = wp_insert_attachment(array(
+            'import_id'      => $aid,                       // keep the backup's id where possible
+            'post_mime_type' => $type['type'] ? $type['type'] : 'image/png',
+            'post_title'     => preg_replace('/\.[^.]+$/', '', basename($abs)),
+            'post_status'    => 'inherit',
+            'guid'           => trailingslashit($u['baseurl']) . $rel,
+        ), $abs);
+
+        if (is_wp_error($new) || !$new) { $problems[] = "could not create attachment for $rel"; continue; }
+
+        update_post_meta($new, '_wp_attached_file', $rel);
+        $meta = wp_generate_attachment_metadata($new, $abs);
+        if (is_array($meta)) { wp_update_attachment_metadata($new, $meta); }
+        $resolved[$aid] = (int) $new;
+        $created++;
+    }
+
+    $set = 0;
+    foreach ($thumbs as $post_id => $aid) {
+        if (!get_post($post_id)) { $problems[] = "post $post_id not found"; continue; }
+        if (empty($resolved[$aid])) { $problems[] = "no attachment available for post $post_id"; continue; }
+        update_post_meta($post_id, '_thumbnail_id', $resolved[$aid]);
+        $set++;
+    }
+
+    $msg = "created $created attachment(s), reused $reused, featured image set on $set of " . count($thumbs) . " posts";
+    if ($problems) { $msg .= '. Issues: ' . implode('; ', array_slice($problems, 0, 4)); }
+    return ($set > 0 ? 'SUCCESS: ' : 'ERROR: ') . $msg;
+}
+
+add_action('admin_init', function () {
+    mm_run_once('mm_thumbs_fix_done', '4.2.0', 'mm_fix_post_thumbnails', 'mm_thumbs_fix_result');
+});
+
+/**
  * [mm_blog_archive columns="2"] — free replacement for Elementor Pro's
  * archive-posts widget. Cards with featured image, title, excerpt and link.
  */
@@ -739,12 +815,17 @@ function mm_tools_page() {
         $message = mm_rebuild_image_metadata(40);
     }
 
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'fix_thumbs') {
+        $message = mm_fix_post_thumbnails();
+    }
+
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'fix_all') {
         $parts = array(
             'Homepage DE: ' . mm_fix_homepage(),
             'Homepage EN: ' . mm_fix_homepage_en(),
             'Blogs: '       . mm_fix_blogs(),
             'Artists: '     . mm_fix_artist_images(),
+            'Thumbs: '      . mm_fix_post_thumbnails(),
         );
         $message = implode(' || ', $parts);
     }
@@ -806,9 +887,13 @@ function mm_tools_page() {
             <input type="hidden" name="mm_action" value="rebuild_css">
             <?php submit_button('Rebuild Elementor CSS', 'secondary', 'submit', false); ?>
         </form>
-        <form method="post" style="display:inline-block;">
+        <form method="post" style="display:inline-block;margin-right:8px;">
             <input type="hidden" name="mm_action" value="rebuild_img_meta">
             <?php submit_button('Rebuild Image Metadata (srcset)', 'secondary', 'submit', false); ?>
+        </form>
+        <form method="post" style="display:inline-block;">
+            <input type="hidden" name="mm_action" value="fix_thumbs">
+            <?php submit_button('Restore Blog Featured Images', 'secondary', 'submit', false); ?>
         </form>
         <?php $hr = get_option('mm_home_fix_result', ''); if ($hr): ?>
             <p style="color:#666;font-size:12px;margin:8px 0 0;"><strong>Homepage:</strong> <?= esc_html($hr) ?></p>
