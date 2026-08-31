@@ -1,0 +1,95 @@
+/*
+ * Artist card portraits — corrections/artist-images-fix
+ *
+ * WHY THIS FILE EXISTS
+ * Elementor paints container background images into its own generated
+ * stylesheet (uploads/elementor/css/post-17.css). On this install that file
+ * refused to regenerate after the page data was restored: it kept only 4 of
+ * the 9 artist portrait rules (Samu, Gabor, Laszlo, Kim), which is why the
+ * other 5 cards (Joern, Zsolt, Markus, Ines, Nelida) rendered with no photo.
+ *
+ * This stylesheet paints those 5 portraits directly, using the exact same
+ * selector pattern and properties Elementor itself uses, so the cards look
+ * identical to the 4 that already worked. It is independent of Elementor's
+ * cache, so it cannot be lost by a stale-CSS problem again.
+ *
+ * Element IDs and image files were read from the restored page data and every
+ * file was verified present on the server (2026-08-31).
+ */
+
+/* Joern "Cheffe" Elsenbruch */
+.elementor-17 .elementor-element.elementor-element-1caa302::before,
+.elementor-17 .elementor-element.elementor-element-1caa302 > .e-con-inner > .elementor-background-slideshow::before,
+.elementor-17 .elementor-element.elementor-element-1caa302 > .elementor-motion-effects-container > .elementor-motion-effects-layer::before {
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/03/Rectangle-18.png") !important;
+    --background-overlay: '';
+    background-position: bottom right;
+    background-repeat: no-repeat;
+}
+
+/* Zsolt */
+.elementor-17 .elementor-element.elementor-element-a867eda::before,
+.elementor-17 .elementor-element.elementor-element-a867eda > .e-con-inner > .elementor-background-slideshow::before,
+.elementor-17 .elementor-element.elementor-element-a867eda > .elementor-motion-effects-container > .elementor-motion-effects-layer::before {
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/03/Rectangle-18-1-1.png") !important;
+    --background-overlay: '';
+    background-position: bottom right;
+    background-repeat: no-repeat;
+}
+
+/* Markus */
+.elementor-17 .elementor-element.elementor-element-6b10ec5::before,
+.elementor-17 .elementor-element.elementor-element-6b10ec5 > .e-con-inner > .elementor-background-slideshow::before,
+.elementor-17 .elementor-element.elementor-element-6b10ec5 > .elementor-motion-effects-container > .elementor-motion-effects-layer::before {
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/03/Rectangle-18-3.png") !important;
+    --background-overlay: '';
+    background-position: bottom right;
+    background-repeat: no-repeat;
+}
+
+/* Ines */
+.elementor-17 .elementor-element.elementor-element-2d0c4f7::before,
+.elementor-17 .elementor-element.elementor-element-2d0c4f7 > .e-con-inner > .elementor-background-slideshow::before,
+.elementor-17 .elementor-element.elementor-element-2d0c4f7 > .elementor-motion-effects-container > .elementor-motion-effects-layer::before {
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/03/Rectangle-18-4.png") !important;
+    --background-overlay: '';
+    background-position: bottom right;
+    background-repeat: no-repeat;
+}
+
+/* Nelida */
+.elementor-17 .elementor-element.elementor-element-019fe9c::before,
+.elementor-17 .elementor-element.elementor-element-019fe9c > .e-con-inner > .elementor-background-slideshow::before,
+.elementor-17 .elementor-element.elementor-element-019fe9c > .elementor-motion-effects-container > .elementor-motion-effects-layer::before {
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/03/Rectangle-18-2.png") !important;
+    --background-overlay: '';
+    background-position: bottom right;
+    background-repeat: no-repeat;
+}
+
+/* Samu, Gabor, Laszlo, Kim already render from Elementor's own stylesheet.
+   Re-declared here so all 9 stay correct even if that file is regenerated. */
+.elementor-17 .elementor-element.elementor-element-bf1c1f0::before {
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/04/samu_rectangle.webp") !important;
+    --background-overlay: '';
+    background-position: bottom right;
+    background-repeat: no-repeat;
+}
+.elementor-17 .elementor-element.elementor-element-8be8c67::before {
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/04/gabor_rectangle.webp") !important;
+    --background-overlay: '';
+    background-position: bottom right;
+    background-repeat: no-repeat;
+}
+.elementor-17 .elementor-element.elementor-element-ed57f13::before {
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/04/laszlo_rectangle.webp") !important;
+    --background-overlay: '';
+    background-position: bottom right;
+    background-repeat: no-repeat;
+}
+.elementor-17 .elementor-element.elementor-element-20ef382::before {
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/04/kim_rectangle.webp") !important;
+    --background-overlay: '';
+    background-position: bottom right;
+    background-repeat: no-repeat;
+}

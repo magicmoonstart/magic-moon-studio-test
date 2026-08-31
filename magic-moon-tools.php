@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 2.2.0
+Version: 2.3.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -353,16 +353,18 @@ add_action('admin_init', function () {
     }
 });
 
-// Responsive fixes: load corrections/responsive-fix/responsive.css on the frontend
+// Frontend stylesheets from corrections/ — loaded late so they win the cascade.
 add_action('wp_enqueue_scripts', function () {
-    $css = __DIR__ . '/corrections/responsive-fix/responsive.css';
-    if (file_exists($css)) {
-        wp_enqueue_style(
-            'mm-responsive-fix',
-            plugins_url('corrections/responsive-fix/responsive.css', __FILE__),
-            array(),
-            (string) filemtime($css)
-        );
+    $sheets = array(
+        'mm-responsive-fix'    => 'corrections/responsive-fix/responsive.css',
+        // Paints the 5 artist portraits Elementor's stale stylesheet never wrote
+        'mm-artist-portraits'  => 'corrections/artist-images-fix/artist-portraits.css',
+    );
+    foreach ($sheets as $handle => $rel) {
+        $path = __DIR__ . '/' . $rel;
+        if (file_exists($path)) {
+            wp_enqueue_style($handle, plugins_url($rel, __FILE__), array(), (string) filemtime($path));
+        }
     }
 }, 99);
 
