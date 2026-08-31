@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 3.3.0
+Version: 4.0.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -236,10 +236,14 @@ function mm_state_report() {
     $home_id = (int) get_option('page_on_front');
     if (!$home_id) $home_id = 10;
     $artist  = get_page_by_path('unsere-kuenstler');
+    $home_en = get_page_by_path('home-en');
+    $blogs   = get_page_by_path('blogs');
     $pages = array('homepage' => $home_id);
-    if ($artist) $pages['artists'] = $artist->ID;
+    if ($artist)  $pages['artists']  = $artist->ID;
+    if ($home_en) $pages['home_en']  = $home_en->ID;
+    if ($blogs)   $pages['blogs']    = $blogs->ID;
 
-    $report = array('plugin_version' => '3.3.0', 'pages' => array());
+    $report = array('plugin_version' => '4.0.0', 'pages' => array());
     foreach ($pages as $label => $pid) {
         $raw = get_post_meta($pid, '_elementor_data', true);
         if (!is_string($raw)) $raw = wp_json_encode($raw);
@@ -259,10 +263,14 @@ function mm_state_report() {
         );
     }
     $report['fix_status'] = array(
-        'home_done'     => get_option('mm_home_fix_done', '(never)'),
-        'home_result'   => get_option('mm_home_fix_result', '(none)'),
-        'artist_done'   => get_option('mm_artist_fix_done', '(never)'),
-        'artist_result' => get_option('mm_artist_fix_result', '(none)'),
+        'home_done'      => get_option('mm_home_fix_done', '(never)'),
+        'home_result'    => get_option('mm_home_fix_result', '(none)'),
+        'home_en_done'   => get_option('mm_home_en_fix_done', '(never)'),
+        'home_en_result' => get_option('mm_home_en_fix_result', '(none)'),
+        'blogs_done'     => get_option('mm_blogs_fix_done', '(never)'),
+        'blogs_result'   => get_option('mm_blogs_fix_result', '(none)'),
+        'artist_done'    => get_option('mm_artist_fix_done', '(never)'),
+        'artist_result'  => get_option('mm_artist_fix_result', '(none)'),
     );
     $report['correction_files'] = array(
         'homepage' => file_exists(__DIR__ . '/corrections/homepage-fix/elementor-data-home-post10.json'),
@@ -360,7 +368,7 @@ function mm_fix_artist_images() {
 
 // Auto-run artist page restore — retries until it genuinely succeeds
 add_action('admin_init', function () {
-    mm_run_once('mm_artist_fix_done', '3.0.0', 'mm_fix_artist_images', 'mm_artist_fix_result');
+    mm_run_once('mm_artist_fix_done', '4.0.0', 'mm_fix_artist_images', 'mm_artist_fix_result');
 });
 
 /**
@@ -395,8 +403,117 @@ function mm_fix_homepage() {
 
 // Auto-run homepage restore — retries until it genuinely succeeds
 add_action('admin_init', function () {
-    mm_run_once('mm_home_fix_done', '3.1.0', 'mm_fix_homepage', 'mm_home_fix_result');
+    mm_run_once('mm_home_fix_done', '4.0.0', 'mm_fix_homepage', 'mm_home_fix_result');
 });
+
+/**
+ * Restore the ENGLISH homepage (post 2616). Same defects as the German one:
+ * 1 Pro "slides" widget + 8 Pro "nested-carousel" widgets rendering empty.
+ * The shipped data has both already converted to free equivalents.
+ */
+function mm_fix_homepage_en() {
+    $file = __DIR__ . '/corrections/homepage-en-fix/elementor-data-home-en-post2616.json';
+    if (!file_exists($file)) {
+        return 'ERROR: English homepage correction file not found - deploy latest version first.';
+    }
+    $post_id = 2616;
+    if (!get_post($post_id)) {
+        // fall back to looking the page up by slug
+        $p = get_page_by_path('home-en');
+        if (!$p) return 'ERROR: English homepage (2616 / home-en) not found.';
+        $post_id = $p->ID;
+    }
+    $w = mm_write_elementor_data($post_id, file_get_contents($file), 'English homepage');
+    if (!$w['ok']) return $w['msg'];
+
+    mm_force_elementor_css_rebuild();
+    return 'SUCCESS: English homepage (post ' . $post_id . ') restored — ' . $w['msg']
+         . '. 8 Pro carousels converted to free grids, Pro slides widget replaced with the built-in hero slider.';
+}
+
+add_action('admin_init', function () {
+    mm_run_once('mm_home_en_fix_done', '4.0.0', 'mm_fix_homepage_en', 'mm_home_en_fix_result');
+});
+
+/**
+ * Rebuild the BLOGS page (post 21). The reference uses the Pro "archive-posts"
+ * widget; this replaces it with a heading plus the free [mm_blog_archive]
+ * shortcode registered below, laid out 2-up like the reference.
+ */
+function mm_fix_blogs() {
+    $file = __DIR__ . '/corrections/blogs-fix/elementor-data-blogs-post21.json';
+    if (!file_exists($file)) {
+        return 'ERROR: blogs correction file not found - deploy latest version first.';
+    }
+    $page = get_page_by_path('blogs');
+    $post_id = $page ? $page->ID : 21;
+    if (!get_post($post_id)) return 'ERROR: blogs page not found.';
+
+    $w = mm_write_elementor_data($post_id, file_get_contents($file), 'blogs page');
+    if (!$w['ok']) return $w['msg'];
+
+    // Elementor only renders a page it considers "built with Elementor"
+    if (get_post_meta($post_id, '_elementor_edit_mode', true) !== 'builder') {
+        update_post_meta($post_id, '_elementor_edit_mode', 'builder');
+    }
+    mm_force_elementor_css_rebuild();
+    return 'SUCCESS: blogs page (post ' . $post_id . ') rebuilt — ' . $w['msg']
+         . '. Pro archive-posts replaced with the free [mm_blog_archive] shortcode.';
+}
+
+add_action('admin_init', function () {
+    mm_run_once('mm_blogs_fix_done', '4.0.0', 'mm_fix_blogs', 'mm_blogs_fix_result');
+});
+
+/**
+ * [mm_blog_archive columns="2"] — free replacement for Elementor Pro's
+ * archive-posts widget. Cards with featured image, title, excerpt and link.
+ */
+function mm_blog_archive_shortcode($atts) {
+    $atts = shortcode_atts(array('columns' => '2', 'per_page' => '12'), $atts, 'mm_blog_archive');
+
+    $q = new WP_Query(array(
+        'post_type'           => 'post',
+        'post_status'         => 'publish',
+        'posts_per_page'      => (int) $atts['per_page'],
+        'ignore_sticky_posts' => true,
+    ));
+
+    if (!$q->have_posts()) {
+        wp_reset_postdata();
+        return '<p class="mm-blog__empty">' . esc_html__('No posts yet.', 'default') . '</p>';
+    }
+
+    $cols = max(1, min(4, (int) $atts['columns']));
+    $out  = '<div class="mm-blog" style="grid-template-columns:repeat(' . $cols . ',minmax(0,1fr))">';
+
+    while ($q->have_posts()) {
+        $q->the_post();
+        $link  = get_permalink();
+        $title = get_the_title();
+        $thumb = get_the_post_thumbnail_url(get_the_ID(), 'large');
+        $excerpt = wp_trim_words(get_the_excerpt(), 28, '…');
+
+        $out .= '<article class="mm-blog__card">';
+        if ($thumb) {
+            $out .= '<a class="mm-blog__thumb" href="' . esc_url($link) . '"'
+                  . ' style="background-image:url(' . esc_url($thumb) . ')"'
+                  . ' aria-label="' . esc_attr($title) . '"></a>';
+        }
+        $out .= '<div class="mm-blog__body">';
+        $out .= '<h3 class="mm-blog__title"><a href="' . esc_url($link) . '">' . esc_html($title) . '</a></h3>';
+        if ($excerpt) {
+            $out .= '<p class="mm-blog__excerpt">' . esc_html($excerpt) . '</p>';
+        }
+        $out .= '<a class="mm-blog__more" href="' . esc_url($link) . '">' . esc_html__('Read more', 'default') . '</a>';
+        $out .= '</div></article>';
+    }
+
+    $out .= '</div>';
+    wp_reset_postdata();
+    return $out;
+}
+add_shortcode('mm_blog_archive', 'mm_blog_archive_shortcode');
 
 /**
  * Replace the heavy artist portfolio videos (26-53MB each) on the server
@@ -441,12 +558,27 @@ add_action('wp_enqueue_scripts', function () {
         'mm-artist-portraits'  => 'corrections/artist-images-fix/artist-portraits.css',
         // Paints the 3 homepage service cards Elementor's CSS generator skips
         'mm-homepage-cards'    => 'corrections/homepage-fix/homepage-cards.css',
+        // Hero slider + card sliders + blog archive (free Pro replacements)
+        'mm-slider'            => 'corrections/slider/mm-slider.css',
     );
     foreach ($sheets as $handle => $rel) {
         $path = __DIR__ . '/' . $rel;
         if (file_exists($path)) {
             wp_enqueue_style($handle, plugins_url($rel, __FILE__), array(), (string) filemtime($path));
         }
+    }
+
+    // Slider behaviour: hero autoplay/arrows/dots + card sliding.
+    // Deferred so it runs after Elementor has rendered the containers.
+    $js = __DIR__ . '/corrections/slider/mm-slider.js';
+    if (file_exists($js)) {
+        wp_enqueue_script(
+            'mm-slider',
+            plugins_url('corrections/slider/mm-slider.js', __FILE__),
+            array(),
+            (string) filemtime($js),
+            true
+        );
     }
 }, 99);
 
@@ -486,6 +618,24 @@ function mm_tools_page() {
         $message = mm_fix_homepage();
     }
 
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'fix_homepage_en') {
+        $message = mm_fix_homepage_en();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'fix_blogs') {
+        $message = mm_fix_blogs();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'fix_all') {
+        $parts = array(
+            'Homepage DE: ' . mm_fix_homepage(),
+            'Homepage EN: ' . mm_fix_homepage_en(),
+            'Blogs: '       . mm_fix_blogs(),
+            'Artists: '     . mm_fix_artist_images(),
+        );
+        $message = implode(' || ', $parts);
+    }
+
     $webp_auto = false;
     $webp_available = function_exists('mm_webp_convert_batch');
     if ($webp_available) {
@@ -520,8 +670,20 @@ function mm_tools_page() {
         <p>Homepage: restores 16 service headings, 16 buttons, 13 text blocks, 3 images.<br>
            Artists: restores all 9 card portraits. Each write is verified against the database.</p>
         <form method="post" style="display:inline-block;margin-right:8px;">
+            <input type="hidden" name="mm_action" value="fix_all">
+            <?php submit_button('Fix Everything', 'primary', 'submit', false); ?>
+        </form>
+        <form method="post" style="display:inline-block;margin-right:8px;">
             <input type="hidden" name="mm_action" value="fix_homepage">
-            <?php submit_button('Fix Homepage', 'primary', 'submit', false); ?>
+            <?php submit_button('Fix Homepage (DE)', 'secondary', 'submit', false); ?>
+        </form>
+        <form method="post" style="display:inline-block;margin-right:8px;">
+            <input type="hidden" name="mm_action" value="fix_homepage_en">
+            <?php submit_button('Fix Homepage (EN)', 'secondary', 'submit', false); ?>
+        </form>
+        <form method="post" style="display:inline-block;margin-right:8px;">
+            <input type="hidden" name="mm_action" value="fix_blogs">
+            <?php submit_button('Fix Blogs', 'secondary', 'submit', false); ?>
         </form>
         <form method="post" style="display:inline-block;margin-right:8px;">
             <input type="hidden" name="mm_action" value="fix_artists">
