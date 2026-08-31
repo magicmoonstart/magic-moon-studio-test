@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 2.1.0
+Version: 2.2.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -195,6 +195,38 @@ add_action('admin_init', function () {
 });
 
 /**
+ * Force a COMPLETE Elementor CSS rebuild.
+ * Deleting only the _elementor_css postmeta is not enough — the generated
+ * files in uploads/elementor/css/ can persist and keep serving stale rules
+ * (that is why 5 artist card portraits never appeared). This also removes
+ * the physical files and uses Elementor's own cache clearer when available.
+ */
+function mm_force_elementor_css_rebuild() {
+    global $wpdb;
+    $removed = 0;
+
+    // 1. Official Elementor API (best path — also rebuilds global CSS)
+    if (class_exists('\Elementor\Plugin') && isset(\Elementor\Plugin::$instance->files_manager)) {
+        \Elementor\Plugin::$instance->files_manager->clear_cache();
+    }
+
+    // 2. Drop cached CSS metadata for every post
+    $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_elementor_css', '_elementor_element_cache', '_elementor_inline_svg')");
+    $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_elementor%' OR option_name LIKE '_transient_timeout_elementor%'");
+    $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name = '_elementor_global_css' OR option_name = 'elementor-custom-breakpoints-files'");
+
+    // 3. Delete the generated CSS files on disk
+    $u = wp_upload_dir();
+    $dir = trailingslashit($u['basedir']) . 'elementor/css';
+    if (is_dir($dir)) {
+        foreach ((array) glob($dir . '/*.css') as $file) {
+            if (is_file($file) && @unlink($file)) $removed++;
+        }
+    }
+    return $removed;
+}
+
+/**
  * Restore the artists page (unsere-kuenstler) Elementor data from the backup.
  * The live version lost all artist images (empty background_image URLs);
  * this restores the full original data with URLs pointing at the live domain.
@@ -220,20 +252,18 @@ function mm_fix_artist_images() {
         @file_put_contents(trailingslashit($u['basedir']) . 'mm-artist-page-backup-' . $page->ID . '.json', $current);
     }
     update_post_meta($page->ID, '_elementor_data', wp_slash($json));
-    // Clear Elementor caches so the restored images render
-    global $wpdb;
-    $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_elementor_css', '_elementor_element_cache')");
-    $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_elementor%'");
+    // Force a full CSS rebuild — stale files were hiding 5 artist portraits
+    $removed = mm_force_elementor_css_rebuild();
     // Re-apply German CTA texts to the restored (English) data
     mm_fix_cta_german();
-    return 'SUCCESS: artists page restored from backup with all images (55 files verified on server). German CTA fix re-applied.';
+    return 'SUCCESS: artists page restored — all 9 card portraits set (Joern, Zsolt, Markus, Ines, Samu, Gabor, Laszlo, Nelida, Kim). Deleted ' . $removed . ' stale CSS files so backgrounds regenerate. German CTA re-applied.';
 }
 
 // Auto-run artist page restore once per plugin version after deployment
 add_action('admin_init', function () {
-    if (get_option('mm_artist_fix_done') !== '1.9.0') {
+    if (get_option('mm_artist_fix_done') !== '2.2.0') {
         $msg = mm_fix_artist_images();
-        update_option('mm_artist_fix_done', '1.9.0');
+        update_option('mm_artist_fix_done', '2.2.0');
         update_option('mm_artist_fix_result', $msg);
     }
 });
@@ -359,6 +389,15 @@ function mm_tools_page() {
         $message = mm_repair_ai1wm();
     }
 
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'rebuild_css') {
+        $n = mm_force_elementor_css_rebuild();
+        $message = "Elementor CSS rebuilt: deleted $n stale CSS files. Reload the frontend (Ctrl+Shift+R).";
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'fix_artists') {
+        $message = mm_fix_artist_images();
+    }
+
     $webp_auto = false;
     $webp_available = function_exists('mm_webp_convert_batch');
     if ($webp_available) {
@@ -388,6 +427,22 @@ function mm_tools_page() {
         <?php $hero_result = get_option('mm_hero_video_result', ''); if ($hero_result): ?>
             <div class="notice notice-info"><p>Hero video: <?= esc_html($hero_result) ?></p></div>
         <?php endif; ?>
+
+        <h2>Artist Cards &amp; Elementor CSS</h2>
+        <p>Restores all 9 artist card portraits and forces a full CSS rebuild.</p>
+        <form method="post" style="display:inline-block;margin-right:8px;">
+            <input type="hidden" name="mm_action" value="fix_artists">
+            <?php submit_button('Fix Artist Cards', 'primary', 'submit', false); ?>
+        </form>
+        <form method="post" style="display:inline-block;">
+            <input type="hidden" name="mm_action" value="rebuild_css">
+            <?php submit_button('Rebuild Elementor CSS', 'secondary', 'submit', false); ?>
+        </form>
+        <?php $ar = get_option('mm_artist_fix_result', ''); if ($ar): ?>
+            <p style="color:#666;font-size:12px;margin-top:8px;"><?= esc_html($ar) ?></p>
+        <?php endif; ?>
+
+        <hr>
 
         <h2>Repair All-in-One WP Migration</h2>
         <p>Restores the plugin from the clean bundled copy (overwrites broken files).</p>
