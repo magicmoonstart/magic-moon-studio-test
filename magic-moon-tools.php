@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 1.9.0
+Version: 2.0.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -235,6 +235,52 @@ add_action('admin_init', function () {
         $msg = mm_fix_artist_images();
         update_option('mm_artist_fix_done', '1.9.0');
         update_option('mm_artist_fix_result', $msg);
+    }
+});
+
+/**
+ * Restore the HOMEPAGE (post 10, front page) Elementor data from the backup.
+ * The live homepage was flattened to bare headings — this restores the full
+ * original design (30 image refs, 24 styled background sections, all 22 media
+ * files verified on server). Current live data is saved for rollback first.
+ */
+function mm_fix_homepage() {
+    $file = __DIR__ . '/corrections/homepage-fix/elementor-data-home-post10.json';
+    if (!file_exists($file)) {
+        return 'ERROR: homepage correction file not found - deploy latest version first.';
+    }
+    $json = file_get_contents($file);
+    if (json_decode($json) === null) {
+        return 'ERROR: homepage correction file is not valid JSON.';
+    }
+    // Front page id (fallback to 10 if not set)
+    $home_id = (int) get_option('page_on_front');
+    if (!$home_id) $home_id = 10;
+    $page = get_post($home_id);
+    if (!$page) {
+        return 'ERROR: homepage post ' . $home_id . ' not found.';
+    }
+    // Backup current live data for rollback
+    $current = get_post_meta($home_id, '_elementor_data', true);
+    if ($current) {
+        $u = wp_upload_dir();
+        @file_put_contents(trailingslashit($u['basedir']) . 'mm-home-page-backup-' . $home_id . '.json', $current);
+    }
+    update_post_meta($home_id, '_elementor_data', wp_slash($json));
+    global $wpdb;
+    $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_elementor_css', '_elementor_element_cache')");
+    $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_elementor%'");
+    // Re-apply German CTA texts to the restored data
+    mm_fix_cta_german();
+    return 'SUCCESS: homepage (post ' . $home_id . ') restored from backup with full design. German CTA fix re-applied. Old data saved as mm-home-page-backup-' . $home_id . '.json';
+}
+
+// Auto-run homepage restore once per plugin version after deployment
+add_action('admin_init', function () {
+    if (get_option('mm_home_fix_done') !== '2.0.0') {
+        $msg = mm_fix_homepage();
+        update_option('mm_home_fix_done', '2.0.0');
+        update_option('mm_home_fix_result', $msg);
     }
 });
 
