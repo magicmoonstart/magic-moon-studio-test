@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 5.0.0
+Version: 5.1.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -274,7 +274,7 @@ function mm_state_report() {
     if ($home_en) $pages['home_en']  = $home_en->ID;
     if ($blogs)   $pages['blogs']    = $blogs->ID;
 
-    $report = array('plugin_version' => '5.0.0', 'pages' => array());
+    $report = array('plugin_version' => '5.1.0', 'pages' => array());
     foreach ($pages as $label => $pid) {
         $raw = get_post_meta($pid, '_elementor_data', true);
         if (!is_string($raw)) $raw = wp_json_encode($raw);
@@ -745,6 +745,8 @@ add_action('wp_enqueue_scripts', function () {
         'mm-homepage-cards'    => 'corrections/homepage-fix/homepage-cards.css',
         // Hero slider + card sliders + blog archive (free Pro replacements)
         'mm-slider'            => 'corrections/slider/mm-slider.css',
+        // Consultation popup (free replacement for Pro Popup Builder)
+        'mm-popup'             => 'corrections/popup/mm-popup.css',
     );
     foreach ($sheets as $handle => $rel) {
         $path = __DIR__ . '/' . $rel;
@@ -755,15 +757,12 @@ add_action('wp_enqueue_scripts', function () {
 
     // Slider behaviour: hero autoplay/arrows/dots + card sliding.
     // Deferred so it runs after Elementor has rendered the containers.
-    $js = __DIR__ . '/corrections/slider/mm-slider.js';
-    if (file_exists($js)) {
-        wp_enqueue_script(
-            'mm-slider',
-            plugins_url('corrections/slider/mm-slider.js', __FILE__),
-            array(),
-            (string) filemtime($js),
-            true
-        );
+    foreach (array('mm-slider' => 'corrections/slider/mm-slider.js',
+                   'mm-popup'  => 'corrections/popup/mm-popup.js') as $h => $rel) {
+        $js = __DIR__ . '/' . $rel;
+        if (file_exists($js)) {
+            wp_enqueue_script($h, plugins_url($rel, __FILE__), array(), (string) filemtime($js), true);
+        }
     }
 }, 99);
 
@@ -794,6 +793,50 @@ function mm_install_webp_assets() {
 add_action('admin_init', function () {
     mm_run_once('mm_webp_assets_done', '5.0.0', 'mm_install_webp_assets', 'mm_webp_assets_result');
 });
+
+/**
+ * Consultation popup — free replacement for Elementor Pro's Popup Builder.
+ *
+ * The reference renders elementor_library post 2136 as an "elementor-location-popup".
+ * Popup Builder is a Pro feature, so on this install the template exists but is
+ * never output — which is why the circular consultation widget was missing.
+ *
+ * Reference settings reproduced here: page_load trigger, 3s delay, fadeIn 1.2s,
+ * front page only.
+ */
+function mm_render_consult_popup() {
+    if (!is_front_page() && !is_home()) return;
+
+    $u    = wp_upload_dir();
+    $base = trailingslashit($u['baseurl']);
+    $dir  = trailingslashit($u['basedir']);
+
+    // Prefer .webp when it exists and the browser takes it (see mm-performance.php)
+    $pick = function ($rel) use ($base, $dir) {
+        $webp = preg_replace('/\.png$/i', '.webp', $rel);
+        if (function_exists('mm_perf_accepts_webp') && mm_perf_accepts_webp() && file_exists($dir . $webp)) {
+            return $base . $webp;
+        }
+        return file_exists($dir . $rel) ? $base . $rel : '';
+    };
+
+    $a = $pick('2026/02/Ellipse-5.png');
+    $b = $pick('2026/02/Ellipse-6.png');
+    if (!$a && !$b) return;   // nothing to show
+
+    ?>
+<div class="mm-consult" data-mm-delay="3000" role="dialog" aria-label="Consultation">
+    <button class="mm-consult__close" type="button" aria-label="Close">&times;</button>
+    <div class="mm-consult__photos">
+        <?php if ($a): ?><img src="<?= esc_url($a) ?>" width="158" height="158" alt="" loading="lazy" decoding="async"><?php endif; ?>
+        <?php if ($b): ?><img src="<?= esc_url($b) ?>" width="158" height="158" alt="" loading="lazy" decoding="async"><?php endif; ?>
+    </div>
+    <a class="mm-consult__btn" href="/contact/">consultation Now</a>
+    <p class="mm-consult__text">Get professional consultation &mdash; we&rsquo;re ready to assist you.</p>
+</div>
+    <?php
+}
+add_action('wp_footer', 'mm_render_consult_popup', 20);
 
 // Core Web Vitals layer: WebP delivery, LCP preload, lazy/async images,
 // emoji removal, font-display swap. Loaded defensively.
