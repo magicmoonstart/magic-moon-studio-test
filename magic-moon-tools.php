@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 5.4.0
+Version: 5.5.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -909,9 +909,15 @@ try {
     require_once __DIR__ . '/corrections/performance/webp-generator.php';
     // Rewrites Elementor data as plain UTF-8 so content edits match what you type
     require_once __DIR__ . '/corrections/json-normalize/normalizer.php';
+    // Grouping menu labels ("Piercing") must not navigate anywhere
+    require_once __DIR__ . '/corrections/menu-fix/menu-fix.php';
 } catch (\Throwable $e) {
     update_option('mm_perf_load_error', $e->getMessage());
 }
+
+add_action('admin_init', function () {
+    mm_run_once('mm_menu_static_done', '5.5.0', 'mm_fix_static_menu_items', 'mm_menu_static_result');
+});
 
 // WebP converter (corrections/webp-conversion) — manual, button-driven, never auto-runs.
 // Loaded defensively: an error in the converter must never break wp-admin.
@@ -971,6 +977,10 @@ function mm_tools_page() {
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'json_normalize' && function_exists('mm_normalize_elementor_json')) {
         $message = mm_normalize_elementor_json();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'menu_static' && function_exists('mm_fix_static_menu_items')) {
+        $message = mm_fix_static_menu_items();
     }
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'webp_generate' && function_exists('mm_webp_generate_batch')) {
@@ -1089,6 +1099,37 @@ function mm_tools_page() {
             <?php submit_button('Normalise Elementor Data', 'primary', 'submit', false); ?>
         </form>
         <p style="color:#666;font-size:12px;">Each click works for about 18 seconds and resumes where it stopped. Keep clicking until it says finished.</p>
+
+        <hr>
+
+        <h2>Menu grouping labels</h2>
+        <p style="max-width:760px;">Labels that only exist to group sub-categories must not navigate anywhere.
+           They keep their position, their text and their dropdown &mdash; they just stop being links,
+           exactly like <code>Dienstleistungen</code>, <code>TATTOO DESIGN</code> and <code>SERVICES</code> already do.</p>
+        <?php if (function_exists('mm_menu_static_state')): $ms = mm_menu_static_state(); ?>
+        <table class="widefat striped" style="max-width:640px;margin-bottom:12px;">
+            <thead><tr><th>ID</th><th>Label</th><th>URL</th><th>State</th></tr></thead>
+            <tbody>
+            <?php if (!$ms): ?>
+                <tr><td colspan="4">No matching menu items found.</td></tr>
+            <?php else: foreach ($ms as $row): ?>
+                <tr>
+                    <td><?= (int) $row['id'] ?></td>
+                    <td><?= esc_html($row['label']) ?></td>
+                    <td><code><?= esc_html($row['url'] === '' ? '(empty)' : $row['url']) ?></code></td>
+                    <td><?= $row['static']
+                            ? '<span style="color:#1a7f37;font-weight:600;">static</span>'
+                            : '<span style="color:#b32d2e;font-weight:600;">still a link</span>' ?></td>
+                </tr>
+            <?php endforeach; endif; ?>
+            </tbody>
+        </table>
+        <?php endif; ?>
+        <form method="post" style="display:inline-block;">
+            <input type="hidden" name="mm_action" value="menu_static">
+            <?php submit_button('Make Grouping Labels Static', 'secondary', 'submit', false); ?>
+        </form>
+        <p style="color:#666;font-size:12px;">Runs automatically once on deploy. This button re-applies it if a later menu edit reintroduces a URL.</p>
 
         <hr>
 
