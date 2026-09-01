@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 5.8.0
+Version: 5.9.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -957,6 +957,8 @@ try {
     require_once __DIR__ . '/corrections/page-clone/page-clone.php';
     // Then put German copy on the German page
     require_once __DIR__ . '/corrections/translate-de/translate-de.php';
+    // Delete whole misplaced sections on specific pages
+    require_once __DIR__ . '/corrections/remove-blocks/remove-blocks.php';
 } catch (\Throwable $e) {
     update_option('mm_perf_load_error', $e->getMessage());
 }
@@ -967,6 +969,7 @@ add_action('admin_init', function () {
     // then the translation replaces the English text it arrives with.
     mm_run_once('mm_page_clone_done', '5.7.0', 'mm_clone_page_layouts', 'mm_page_clone_result');
     mm_run_once('mm_translate_de_done', '5.8.0', 'mm_apply_de_translations', 'mm_translate_de_result');
+    mm_run_once('mm_remove_blocks_done', '5.9.0', 'mm_remove_blocks', 'mm_remove_blocks_result');
 });
 
 // WebP converter (corrections/webp-conversion) — manual, button-driven, never auto-runs.
@@ -1039,6 +1042,10 @@ function mm_tools_page() {
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'translate_de' && function_exists('mm_apply_de_translations')) {
         $message = mm_apply_de_translations();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'remove_blocks' && function_exists('mm_remove_blocks')) {
+        $message = mm_remove_blocks();
     }
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'webp_generate' && function_exists('mm_webp_generate_batch')) {
@@ -1248,6 +1255,42 @@ function mm_tools_page() {
             <?php submit_button('Apply German Copy', 'secondary', 'submit', false); ?>
         </form>
         <p style="color:#666;font-size:12px;">Runs automatically once on deploy, immediately after the layout clone.</p>
+
+        <hr>
+
+        <h2>Remove misplaced sections</h2>
+        <p style="max-width:760px;">Deletes whole sections &mdash; heading, body copy and that section's own CTA together &mdash;
+           on the exact pages listed in <code>corrections/remove-blocks/blocks.php</code> and nowhere else.
+           Scoped by post id, so the same wording appearing legitimately on another page is never touched.
+           A page is skipped rather than left empty, and the previous layout is saved to
+           <code>uploads/mm-rollback-&lt;id&gt;.json</code>.</p>
+        <?php if (function_exists('mm_remove_blocks_state')): ?>
+        <table class="widefat striped" style="max-width:860px;margin-bottom:12px;">
+            <thead><tr><th>Post</th><th>Title</th><th>Widgets still matching</th></tr></thead>
+            <tbody>
+            <?php foreach (mm_remove_blocks_state() as $row): ?>
+                <tr>
+                    <td><?= (int) $row['post'] ?></td>
+                    <td><?= esc_html($row['title']) ?></td>
+                    <td><?php
+                        if ($row['marked'] < 0) {
+                            echo '<span style="color:#b32d2e;">unreadable Elementor data</span>';
+                        } elseif ($row['marked'] === 0) {
+                            echo '<span style="color:#1a7f37;font-weight:600;">0 &mdash; clean</span>';
+                        } else {
+                            echo '<span style="color:#b32d2e;font-weight:600;">' . (int) $row['marked'] . ' still present</span>';
+                        }
+                    ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php endif; ?>
+        <form method="post" style="display:inline-block;">
+            <input type="hidden" name="mm_action" value="remove_blocks">
+            <?php submit_button('Remove Listed Sections', 'secondary', 'submit', false); ?>
+        </form>
+        <p style="color:#666;font-size:12px;">Runs automatically once on deploy. Every listed post is reported, including ones that were already clean.</p>
 
         <hr>
 
