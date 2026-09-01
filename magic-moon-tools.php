@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 6.5.0
+Version: 6.6.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -1001,6 +1001,8 @@ try {
     require_once __DIR__ . '/corrections/menu-items/menu-items.php';
     // Alphabetise the submenus in both languages
     require_once __DIR__ . '/corrections/menu-sort/menu-sort.php';
+    // Swap a specific container background photo on a specific page
+    require_once __DIR__ . '/corrections/bg-images/bg-images.php';
 } catch (\Throwable $e) {
     update_option('mm_perf_load_error', $e->getMessage());
 }
@@ -1015,6 +1017,7 @@ add_action('admin_init', function () {
     mm_run_once('mm_menu_items_done', '6.0.0', 'mm_add_missing_menu_items', 'mm_menu_items_result');
     // After the two missing entries exist, so they are included in the sort.
     mm_run_once('mm_menu_sort_done', '6.5.0', 'mm_menu_sort_apply', 'mm_menu_sort_result');
+    mm_run_once('mm_bg_images_done', '6.6.0', 'mm_apply_bg_image_swaps', 'mm_bg_images_result');
 });
 
 // WebP converter (corrections/webp-conversion) — manual, button-driven, never auto-runs.
@@ -1103,6 +1106,10 @@ function mm_tools_page() {
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'menu_sort_restore' && function_exists('mm_menu_sort_restore')) {
         $message = mm_menu_sort_restore();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'bg_images' && function_exists('mm_apply_bg_image_swaps')) {
+        $message = mm_apply_bg_image_swaps();
     }
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'webp_generate' && function_exists('mm_webp_generate_batch')) {
@@ -1416,6 +1423,36 @@ function mm_tools_page() {
         </form>
         <p style="color:#666;font-size:12px;">Runs automatically once on deploy. The order every item had beforehand is
            saved first, so <strong>Restore Previous Order</strong> undoes it completely.</p>
+
+        <hr>
+
+        <h2>Background image swap</h2>
+        <?php if (function_exists('mm_bg_image_state')): ?>
+        <table class="widefat striped" style="max-width:860px;margin-bottom:12px;">
+            <thead><tr><th>Post</th><th>Page</th><th>From</th><th>To</th><th>State</th></tr></thead>
+            <tbody>
+            <?php foreach (mm_bg_image_state() as $r): ?>
+                <tr>
+                    <td><?= (int) $r['post'] ?></td>
+                    <td><?= esc_html($r['title']) ?></td>
+                    <td><code><?= esc_html($r['old']) ?></code></td>
+                    <td><code><?= esc_html($r['new']) ?></code></td>
+                    <td><?= $r['oldStill']
+                            ? '<span style="color:#b32d2e;font-weight:600;">not swapped yet</span>'
+                            : ($r['newThere']
+                                ? '<span style="color:#1a7f37;font-weight:600;">swapped</span>'
+                                : '<span style="color:#b32d2e;">neither file present</span>') ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php endif; ?>
+        <form method="post" style="display:inline-block;">
+            <input type="hidden" name="mm_action" value="bg_images">
+            <?php submit_button('Swap Background Image', 'secondary', 'submit', false); ?>
+        </form>
+        <p style="color:#666;font-size:12px;">Runs automatically once on deploy. The previous layout is saved to
+           <code>uploads/mm-rollback-621.json</code> first.</p>
 
         <hr>
 
