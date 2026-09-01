@@ -80,6 +80,29 @@ function mm_apply_de_translations() {
             continue;
         }
 
+        // Page-level directives (keys starting with "_") are not widget ids and
+        // must be taken out before the walk, or they would be counted missing.
+        $directives = array();
+        foreach ($widgets as $k => $v) {
+            if (is_string($k) && $k !== '' && $k[0] === '_') {
+                $directives[$k] = $v;
+                unset($widgets[$k]);
+            }
+        }
+
+        if (isset($directives['_post_title'])) {
+            $want = (string) $directives['_post_title'];
+            $post = get_post($post_id);
+            if ($post && $post->post_title !== $want) {
+                // Title only — post_name is left alone so existing links keep working.
+                wp_update_post(array('ID' => $post_id, 'post_title' => $want));
+                $now = get_post($post_id);
+                $report[] = ($now && $now->post_title === $want)
+                    ? "post $post_id title -> \"$want\""
+                    : "WARNING: post $post_id title did not change";
+            }
+        }
+
         $raw = get_post_meta($post_id, '_elementor_data', true);
         if (!is_string($raw) || $raw === '') {
             $errors++; $report[] = "ERROR: post $post_id has no _elementor_data.";
@@ -134,6 +157,11 @@ function mm_apply_de_translations() {
 function mm_de_translation_state() {
     $rows = array();
     foreach (mm_de_translation_map() as $post_id => $widgets) {
+        // Page-level directives are not widgets — exclude them from the counts.
+        foreach (array_keys($widgets) as $k) {
+            if (is_string($k) && $k !== '' && $k[0] === '_') unset($widgets[$k]);
+        }
+
         $raw = get_post_meta((int) $post_id, '_elementor_data', true);
         $data = is_string($raw) ? json_decode($raw, true) : null;
 

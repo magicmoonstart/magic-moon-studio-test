@@ -53,6 +53,12 @@ return array(
      * ================================================================== */
     667 => array(
 
+        /* Page-level directives use a leading underscore and are applied
+           outside the widget walk. The slug is deliberately NOT changed:
+           /navel-belly-button/ is already in use and renaming it would break
+           every existing link to the page. */
+        '_post_title' => 'Bauchnabel-Piercing',
+
         '64cfa103' => array('title' => 'Unser Service'),
         '45126c76' => array('title' => 'Bauchnabel-Piercing'),
         '553eb734' => array('title' => 'Was ist ein Bauchnabel-Piercing?'),

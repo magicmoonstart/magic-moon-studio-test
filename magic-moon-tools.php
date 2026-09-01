@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 5.9.0
+Version: 6.0.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -959,6 +959,8 @@ try {
     require_once __DIR__ . '/corrections/translate-de/translate-de.php';
     // Delete whole misplaced sections on specific pages
     require_once __DIR__ . '/corrections/remove-blocks/remove-blocks.php';
+    // Pages that exist but were never added to the menu
+    require_once __DIR__ . '/corrections/menu-items/menu-items.php';
 } catch (\Throwable $e) {
     update_option('mm_perf_load_error', $e->getMessage());
 }
@@ -968,8 +970,9 @@ add_action('admin_init', function () {
     // Order matters: the clone brings the layout and the photographs across,
     // then the translation replaces the English text it arrives with.
     mm_run_once('mm_page_clone_done', '5.7.0', 'mm_clone_page_layouts', 'mm_page_clone_result');
-    mm_run_once('mm_translate_de_done', '5.8.0', 'mm_apply_de_translations', 'mm_translate_de_result');
+    mm_run_once('mm_translate_de_done', '6.0.0', 'mm_apply_de_translations', 'mm_translate_de_result');
     mm_run_once('mm_remove_blocks_done', '5.9.0', 'mm_remove_blocks', 'mm_remove_blocks_result');
+    mm_run_once('mm_menu_items_done', '6.0.0', 'mm_add_missing_menu_items', 'mm_menu_items_result');
 });
 
 // WebP converter (corrections/webp-conversion) — manual, button-driven, never auto-runs.
@@ -1046,6 +1049,10 @@ function mm_tools_page() {
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'remove_blocks' && function_exists('mm_remove_blocks')) {
         $message = mm_remove_blocks();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'menu_items' && function_exists('mm_add_missing_menu_items')) {
+        $message = mm_add_missing_menu_items();
     }
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'webp_generate' && function_exists('mm_webp_generate_batch')) {
@@ -1291,6 +1298,37 @@ function mm_tools_page() {
             <?php submit_button('Remove Listed Sections', 'secondary', 'submit', false); ?>
         </form>
         <p style="color:#666;font-size:12px;">Runs automatically once on deploy. Every listed post is reported, including ones that were already clean.</p>
+
+        <hr>
+
+        <h2>Missing menu entries</h2>
+        <p style="max-width:760px;">Pages that exist, are published and are correctly linked by Polylang, but were never added to a menu &mdash;
+           so they were reachable only by typing the URL. Entries are created under the named parent and positioned to
+           match the English submenu, then the menu is renumbered so the order is deterministic.
+           Re-running adds nothing if the entry is already there; it only re-asserts the position.</p>
+        <?php if (function_exists('mm_menu_items_state')): ?>
+        <table class="widefat striped" style="max-width:860px;margin-bottom:12px;">
+            <thead><tr><th>Label</th><th>Page</th><th>Slug</th><th>Menu</th><th>State</th></tr></thead>
+            <tbody>
+            <?php foreach (mm_menu_items_state() as $row): ?>
+                <tr>
+                    <td><?= esc_html($row['label']) ?></td>
+                    <td><?= (int) $row['page'] ?></td>
+                    <td><code>/<?= esc_html($row['slug']) ?>/</code></td>
+                    <td><?= (int) $row['menu'] ?></td>
+                    <td><?= $row['present']
+                            ? '<span style="color:#1a7f37;font-weight:600;">in menu (item ' . (int) $row['item'] . ')</span>'
+                            : '<span style="color:#b32d2e;font-weight:600;">missing from menu</span>' ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php endif; ?>
+        <form method="post" style="display:inline-block;">
+            <input type="hidden" name="mm_action" value="menu_items">
+            <?php submit_button('Add Missing Menu Entries', 'secondary', 'submit', false); ?>
+        </form>
+        <p style="color:#666;font-size:12px;">Runs automatically once on deploy.</p>
 
         <hr>
 
