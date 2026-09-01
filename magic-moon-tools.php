@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 5.1.0
+Version: 5.2.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -108,6 +108,49 @@ function mm_fix_cta_for_post($post_id) {
     }
     return $changed;
 }
+
+/**
+ * Apply the editorial text corrections in corrections/text-fixes.
+ *
+ * Sitewide find-and-replace across Elementor data and post content, for copy
+ * changes requested after the backup was taken. Reports how many rows each
+ * replacement touched so a change that matched nothing is visible rather than
+ * silently doing nothing.
+ */
+function mm_apply_text_fixes() {
+    global $wpdb;
+    $map_file = __DIR__ . '/corrections/text-fixes/replacements.php';
+    if (!file_exists($map_file)) {
+        return 'ERROR: corrections/text-fixes/replacements.php not found - deploy latest version first.';
+    }
+    $pairs = include $map_file;
+    if (!is_array($pairs) || empty($pairs)) {
+        return 'ERROR: text-fix map is empty or invalid.';
+    }
+
+    $report = array();
+    foreach ($pairs as $from => $to) {
+        $n  = (int) $wpdb->query($wpdb->prepare(
+            "UPDATE {$wpdb->postmeta} SET meta_value = REPLACE(meta_value, %s, %s)
+             WHERE meta_key = '_elementor_data' AND meta_value LIKE %s",
+            $from, $to, '%' . $wpdb->esc_like($from) . '%'
+        ));
+        $n += (int) $wpdb->query($wpdb->prepare(
+            "UPDATE {$wpdb->posts} SET post_content = REPLACE(post_content, %s, %s)
+             WHERE post_content LIKE %s",
+            $from, $to, '%' . $wpdb->esc_like($from) . '%'
+        ));
+        $short = mb_substr($from, 0, 46);
+        $report[] = $short . ($n ? " -> $n row(s)" : ' -> NO MATCH');
+    }
+
+    mm_force_elementor_css_rebuild();
+    return 'SUCCESS: text fixes applied. ' . implode(' | ', $report);
+}
+
+add_action('admin_init', function () {
+    mm_run_once('mm_text_fixes_done', '5.2.0', 'mm_apply_text_fixes', 'mm_text_fixes_result');
+});
 
 /**
  * Restore All-in-One WP Migration from the clean bundled zip.
@@ -274,7 +317,7 @@ function mm_state_report() {
     if ($home_en) $pages['home_en']  = $home_en->ID;
     if ($blogs)   $pages['blogs']    = $blogs->ID;
 
-    $report = array('plugin_version' => '5.1.0', 'pages' => array());
+    $report = array('plugin_version' => '5.2.0', 'pages' => array());
     foreach ($pages as $label => $pid) {
         $raw = get_post_meta($pid, '_elementor_data', true);
         if (!is_string($raw)) $raw = wp_json_encode($raw);
@@ -899,6 +942,10 @@ function mm_tools_page() {
         $message = mm_fix_post_thumbnails();
     }
 
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'text_fixes') {
+        $message = mm_apply_text_fixes();
+    }
+
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'webp_generate' && function_exists('mm_webp_generate_batch')) {
         $message = mm_webp_generate_batch();
     }
@@ -914,6 +961,7 @@ function mm_tools_page() {
             'Blogs: '       . mm_fix_blogs(),
             'Artists: '     . mm_fix_artist_images(),
             'Thumbs: '      . mm_fix_post_thumbnails(),
+            'Text: '        . mm_apply_text_fixes(),
         );
         $message = implode(' || ', $parts);
     }
@@ -979,9 +1027,13 @@ function mm_tools_page() {
             <input type="hidden" name="mm_action" value="rebuild_img_meta">
             <?php submit_button('Rebuild Image Metadata (srcset)', 'secondary', 'submit', false); ?>
         </form>
-        <form method="post" style="display:inline-block;">
+        <form method="post" style="display:inline-block;margin-right:8px;">
             <input type="hidden" name="mm_action" value="fix_thumbs">
             <?php submit_button('Restore Blog Featured Images', 'secondary', 'submit', false); ?>
+        </form>
+        <form method="post" style="display:inline-block;">
+            <input type="hidden" name="mm_action" value="text_fixes">
+            <?php submit_button('Apply Text Corrections', 'secondary', 'submit', false); ?>
         </form>
         <?php $hr = get_option('mm_home_fix_result', ''); if ($hr): ?>
             <p style="color:#666;font-size:12px;margin:8px 0 0;"><strong>Homepage:</strong> <?= esc_html($hr) ?></p>
