@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 6.2.0
+Version: 6.3.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -212,7 +212,7 @@ function mm_apply_text_fixes() {
 }
 
 add_action('admin_init', function () {
-    mm_run_once('mm_text_fixes_done', '5.7.0', 'mm_apply_text_fixes', 'mm_text_fixes_result');
+    mm_run_once('mm_text_fixes_done', '6.3.0', 'mm_apply_text_fixes', 'mm_text_fixes_result');
 });
 
 /**

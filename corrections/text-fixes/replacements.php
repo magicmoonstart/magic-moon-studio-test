@@ -76,6 +76,49 @@ return array(
     'evolve with personal style over time.q'
         => 'evolve with personal style over time.',
 
+    /* ==================================================================
+     * Requested 2026-09-01 for /grafisches-tattoo/:
+     * remove "American Academy of Dermatology)."
+     *
+     * That phrase could not be found anywhere on the live site — 21 style
+     * pages in both languages were checked in their served HTML, and a
+     * site-wide search for the exact phrase returned nothing ("Academy"
+     * matches only the two artists pages). It appears to have been removed
+     * already.
+     *
+     * What it left behind is visible though: on exactly the two Graphic
+     * Tattoo pages, the sentence that carried the citation now ends with no
+     * full stop at all —
+     *     DE 523 "...damit Tattoos länger gut aussehen</p>"
+     *     EN 3077 "...keeping tattoos looking their best</p>"
+     * — which is the fingerprint of "(... American Academy of Dermatology)."
+     * having been cut out, taking the closing period with it. No other page
+     * carrying a dermatology reference has this problem.
+     *
+     * So two things are done here:
+     *  1. The citation is removed defensively, in every wording it plausibly
+     *     had. If it genuinely is not in the database these rules simply
+     *     report NO MATCH, which costs nothing and proves it is gone.
+     *  2. The two missing full stops are restored.
+     *
+     * The punctuation rules are anchored on the closing tag so they are
+     * idempotent — after they run the pattern no longer matches, so a second
+     * run cannot add a second period.
+     * ================================================================== */
+
+    // 1) the citation, longest wording first
+    ' (Quelle: American Academy of Dermatology)' => '',
+    ' (source: American Academy of Dermatology)' => '',
+    ' (American Academy of Dermatology)'         => '',
+    'American Academy of Dermatology'            => '',
+
+    // 2) the full stops it took with it
+    'damit Tattoos länger gut aussehen</p>'
+        => 'damit Tattoos länger gut aussehen.</p>',
+
+    'as a key habit for keeping tattoos looking their best</p>'
+        => 'as a key habit for keeping tattoos looking their best.</p>',
+
     /* ------------------------------------------------------------------
      * Requested earlier: remove "Franchise" from the partner-studio pages
      * — heading AND body copy, both languages.
