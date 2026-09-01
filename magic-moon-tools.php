@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 6.3.0
+Version: 6.4.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -961,6 +961,8 @@ try {
     require_once __DIR__ . '/corrections/remove-blocks/remove-blocks.php';
     // Pages that exist but were never added to the menu
     require_once __DIR__ . '/corrections/menu-items/menu-items.php';
+    // Alphabetise the submenus in both languages
+    require_once __DIR__ . '/corrections/menu-sort/menu-sort.php';
 } catch (\Throwable $e) {
     update_option('mm_perf_load_error', $e->getMessage());
 }
@@ -973,6 +975,8 @@ add_action('admin_init', function () {
     mm_run_once('mm_translate_de_done', '6.2.0', 'mm_apply_de_translations', 'mm_translate_de_result');
     mm_run_once('mm_remove_blocks_done', '5.9.0', 'mm_remove_blocks', 'mm_remove_blocks_result');
     mm_run_once('mm_menu_items_done', '6.0.0', 'mm_add_missing_menu_items', 'mm_menu_items_result');
+    // After the two missing entries exist, so they are included in the sort.
+    mm_run_once('mm_menu_sort_done', '6.4.0', 'mm_menu_sort_apply', 'mm_menu_sort_result');
 });
 
 // WebP converter (corrections/webp-conversion) — manual, button-driven, never auto-runs.
@@ -1053,6 +1057,14 @@ function mm_tools_page() {
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'menu_items' && function_exists('mm_add_missing_menu_items')) {
         $message = mm_add_missing_menu_items();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'menu_sort' && function_exists('mm_menu_sort_apply')) {
+        $message = mm_menu_sort_apply();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'menu_sort_restore' && function_exists('mm_menu_sort_restore')) {
+        $message = mm_menu_sort_restore();
     }
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'webp_generate' && function_exists('mm_webp_generate_batch')) {
@@ -1329,6 +1341,43 @@ function mm_tools_page() {
             <?php submit_button('Add Missing Menu Entries', 'secondary', 'submit', false); ?>
         </form>
         <p style="color:#666;font-size:12px;">Runs automatically once on deploy.</p>
+
+        <hr>
+
+        <h2>Alphabetical submenus</h2>
+        <p style="max-width:760px;">Sorts the children of each submenu in both languages. German collation &mdash;
+           <code>ä=a</code>, <code>ö=o</code>, <code>ü=u</code>, <code>ß=ss</code> &mdash; case-insensitive, and
+           invisible zero-width characters in labels are ignored. Section labels (URL <code>#</code>) are pinned
+           above the real entries rather than mixed in. The top-level bar is not sorted, so
+           <em>Startseite</em> / <em>HOME</em> stays first.</p>
+        <?php if (function_exists('mm_menu_sort_state')): ?>
+        <table class="widefat striped" style="max-width:860px;margin-bottom:12px;">
+            <thead><tr><th>Submenu</th><th>Items</th><th>Headers</th><th>First entry</th><th>State</th></tr></thead>
+            <tbody>
+            <?php foreach (mm_menu_sort_state() as $row): ?>
+                <tr>
+                    <td><?= esc_html($row['label']) ?></td>
+                    <td><?= (int) $row['count'] ?></td>
+                    <td><?= (int) $row['headers'] ?></td>
+                    <td><?= esc_html($row['first']) ?></td>
+                    <td><?= $row['sorted']
+                            ? '<span style="color:#1a7f37;font-weight:600;">alphabetical</span>'
+                            : '<span style="color:#b32d2e;font-weight:600;">not sorted</span>' ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php endif; ?>
+        <form method="post" style="display:inline-block;margin-right:8px;">
+            <input type="hidden" name="mm_action" value="menu_sort">
+            <?php submit_button('Sort Submenus A&ndash;Z', 'secondary', 'submit', false); ?>
+        </form>
+        <form method="post" style="display:inline-block;">
+            <input type="hidden" name="mm_action" value="menu_sort_restore">
+            <?php submit_button('Restore Previous Order', 'delete', 'submit', false); ?>
+        </form>
+        <p style="color:#666;font-size:12px;">Runs automatically once on deploy. The order every item had beforehand is
+           saved first, so <strong>Restore Previous Order</strong> undoes it completely.</p>
 
         <hr>
 
