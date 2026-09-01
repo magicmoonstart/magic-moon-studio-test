@@ -1,9 +1,9 @@
-﻿<?php
+<?php
 /*
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 4.2.0
+Version: 5.0.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -274,7 +274,7 @@ function mm_state_report() {
     if ($home_en) $pages['home_en']  = $home_en->ID;
     if ($blogs)   $pages['blogs']    = $blogs->ID;
 
-    $report = array('plugin_version' => '4.2.0', 'pages' => array());
+    $report = array('plugin_version' => '5.0.0', 'pages' => array());
     foreach ($pages as $label => $pid) {
         $raw = get_post_meta($pid, '_elementor_data', true);
         if (!is_string($raw)) $raw = wp_json_encode($raw);
@@ -767,6 +767,43 @@ add_action('wp_enqueue_scripts', function () {
     }
 }, 99);
 
+/**
+ * Copy the shipped .webp assets into uploads.
+ * These are the three card backgrounds that made up the homepage's entire
+ * 1,633 KB image payload; as WebP they total 142 KB. homepage-cards.css points
+ * at them. Never overwrites an existing file.
+ */
+function mm_install_webp_assets() {
+    $src_root = __DIR__ . '/corrections/webp-assets';
+    if (!is_dir($src_root)) return 'No WebP assets shipped.';
+    $u = wp_upload_dir();
+    $base = trailingslashit($u['basedir']);
+    $copied = 0; $already = 0;
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($src_root, FilesystemIterator::SKIP_DOTS));
+    foreach ($it as $file) {
+        if (!$file->isFile()) continue;
+        $rel  = str_replace('\\', '/', substr($file->getPathname(), strlen($src_root) + 1));
+        $dest = $base . $rel;
+        if (file_exists($dest)) { $already++; continue; }
+        wp_mkdir_p(dirname($dest));
+        if (copy($file->getPathname(), $dest)) $copied++;
+    }
+    return "SUCCESS: installed $copied WebP asset(s), $already already present.";
+}
+
+add_action('admin_init', function () {
+    mm_run_once('mm_webp_assets_done', '5.0.0', 'mm_install_webp_assets', 'mm_webp_assets_result');
+});
+
+// Core Web Vitals layer: WebP delivery, LCP preload, lazy/async images,
+// emoji removal, font-display swap. Loaded defensively.
+try {
+    require_once __DIR__ . '/corrections/performance/mm-performance.php';
+    require_once __DIR__ . '/corrections/performance/webp-generator.php';
+} catch (\Throwable $e) {
+    update_option('mm_perf_load_error', $e->getMessage());
+}
+
 // WebP converter (corrections/webp-conversion) — manual, button-driven, never auto-runs.
 // Loaded defensively: an error in the converter must never break wp-admin.
 try {
@@ -817,6 +854,14 @@ function mm_tools_page() {
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'fix_thumbs') {
         $message = mm_fix_post_thumbnails();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'webp_generate' && function_exists('mm_webp_generate_batch')) {
+        $message = mm_webp_generate_batch();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'webp_remove' && function_exists('mm_webp_remove_all')) {
+        $message = mm_webp_remove_all();
     }
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'fix_all') {
@@ -901,6 +946,27 @@ function mm_tools_page() {
         <?php $ar = get_option('mm_artist_fix_result', ''); if ($ar): ?>
             <p style="color:#666;font-size:12px;margin:4px 0 0;"><strong>Artists:</strong> <?= esc_html($ar) ?></p>
         <?php endif; ?>
+
+        <hr>
+
+        <h2>WebP &amp; Core Web Vitals</h2>
+        <?php $wp = function_exists('mm_webp_progress') ? mm_webp_progress() : array('total'=>0,'done'=>0);
+              $pct = $wp['total'] ? round($wp['done']/$wp['total']*100) : 0; ?>
+        <p>Creates a <code>.webp</code> beside every JPG/PNG. Originals are never modified &mdash;
+           delivery swaps the extension only when the file exists and the browser accepts WebP.<br>
+           <strong><?= (int)$wp['done'] ?> / <?= (int)$wp['total'] ?></strong> images done (<?= $pct ?>%) &middot;
+           saved so far: <strong><?= number_format(((int)get_option('mm_webp_saved_bytes',0))/1048576, 1) ?> MB</strong></p>
+        <div style="background:#e0e0e0;border-radius:4px;height:20px;max-width:460px;margin-bottom:12px;">
+            <div style="background:#2271b1;height:20px;border-radius:4px;width:<?= $pct ?>%;"></div>
+        </div>
+        <form method="post" style="display:inline-block;margin-right:8px;">
+            <input type="hidden" name="mm_action" value="webp_generate">
+            <?php submit_button('Generate WebP (next batch)', 'primary', 'submit', false); ?>
+        </form>
+        <form method="post" style="display:inline-block;" onsubmit="return confirm('Delete all generated .webp files? Originals are untouched, the site simply goes back to JPEG/PNG.');">
+            <input type="hidden" name="mm_action" value="webp_remove">
+            <?php submit_button('Remove all WebP', 'delete', 'submit', false); ?>
+        </form>
 
         <hr>
 

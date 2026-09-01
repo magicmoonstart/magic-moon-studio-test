@@ -7,9 +7,14 @@
  * for 13 of them. Three containers were skipped every time the CSS regenerated,
  * so those cards rendered with no photo:
  *
- *   3b4b7dd  Partner Studio       -> 2026/04/Screenshot-2026-04-23-164016-1-1.png
- *   27664a7  Tattoo Supply Model  -> 2026/04/Rectangle-61-1.png
- *   56df7bf  Support for Growth   -> 2026/03/Rectangle-18-3.png
+ *   3b4b7dd  Partner Studio       -> 2026/04/Screenshot-2026-04-23-164016-1-1.webp
+ *   27664a7  Tattoo Supply Model  -> 2026/04/Rectangle-61-1.webp
+ *   56df7bf  Support for Growth   -> 2026/03/Rectangle-18-3.webp
+ *
+ * These now point at .webp versions (shipped in corrections/webp-assets and
+ * copied into uploads on deploy). These three PNGs were the ENTIRE 1,633 KB
+ * image payload of the homepage; as WebP they total 142 KB (-91%) with no
+ * visible difference. The .png originals stay on disk.
  *
  * All three files were verified present on the server. These rules paint them
  * directly, matching the properties Elementor uses for the other 13 cards.
@@ -25,7 +30,7 @@
 
 /* Partner Studio */
 .elementor.elementor-10 .e-con.e-child.elementor-element.elementor-element-3b4b7dd {
-    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/04/Screenshot-2026-04-23-164016-1-1.png") !important;
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/04/Screenshot-2026-04-23-164016-1-1.webp") !important;
     background-size: cover !important;
     background-position: center center !important;
     background-repeat: no-repeat !important;
@@ -33,7 +38,7 @@
 
 /* Tattoo Supply Model */
 .elementor.elementor-10 .e-con.e-child.elementor-element.elementor-element-27664a7 {
-    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/04/Rectangle-61-1.png") !important;
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/04/Rectangle-61-1.webp") !important;
     background-size: cover !important;
     background-position: center center !important;
     background-repeat: no-repeat !important;
@@ -41,7 +46,7 @@
 
 /* Support for Growth */
 .elementor.elementor-10 .e-con.e-child.elementor-element.elementor-element-56df7bf {
-    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/03/Rectangle-18-3.png") !important;
+    background-image: url("https://testmagicmoonnewstud3231.live-website.com/wp-content/uploads/2026/03/Rectangle-18-3.webp") !important;
     background-size: cover !important;
     background-position: center center !important;
     background-repeat: no-repeat !important;
