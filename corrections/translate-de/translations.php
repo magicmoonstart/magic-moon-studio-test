@@ -1,6 +1,12 @@
 <?php
 /**
- * German page copy — corrections/translate-de
+ * Exact widget content — corrections/translate-de
+ *
+ * Mostly German page copy, which is what this started as. It has since also
+ * become the place for any correction that needs a widget's content restated
+ * exactly, in whatever language — including trimming unwanted passages that
+ * were appended to widgets holding genuine copy, where deleting the widget
+ * would take the good content with it. Post 2813 is English for that reason.
  *
  * WHY THIS FILE EXISTS
  * corrections/page-clone copies a finished English layout onto its German
@@ -172,6 +178,89 @@ return array(
           . 'Nach der Heilung beurteilen wir das Tattoo im echten Leben (nicht nur auf frischen Fotos). Wenn eine '
           . 'kleine Verfeinerung oder ein gezielter Kontrast-Boost sinnvoll ist, planen wir sie strategisch—damit '
           . 'dein Realismus-Tattoo scharf, lesbar und langlebig bleibt.</p>'
+        ),
+    ),
+
+    /* ==================================================================
+     * 454 — /schwarz-grau-realismus/  (Black & Grey Realism, DE)
+     *
+     * Requested 2026-09-01: strip content that does not belong on the page.
+     * Two separate problems, both APPENDED to the end of widgets that also
+     * hold genuine copy — which is why the whole widgets cannot simply be
+     * deleted, and why each is re-stated here ending exactly where the real
+     * content ends:
+     *
+     *  1. An unfinished editorial note left in live copy, addressed to the
+     *     site owner rather than to a visitor:
+     *       "Wenn du möchtest, sag mir, welches Motiv du am häufigsten
+     *        targetest ... damit sie dafür besser rankt"
+     *
+     *  2. Five English sponsorship-programme paragraphs pasted onto a German
+     *     tattoo-style page ("This structure gives artists room...",
+     *     "A structured sponsorship helps...", "Through regular
+     *     collaboration...", "Magic Moon also believes...", "If you are an
+     *     individual tattoo artist...").
+     *
+     * Everything kept below is the page's existing markup, unchanged, except
+     * for one added full stop noted inline.
+     * ================================================================== */
+    454 => array(
+
+        // keeps the placement-caution list; drops 2 trailing English paragraphs
+        '8f9d007' => array('editor' =>
+            '<p><b>Stellen, bei denen man vorsichtig sein sollte (mehr Verzerrung / schnelleres Verblassen):</b></p>'
+          . '<ul>'
+          . '<li aria-level="1"><b>Rippen, Bauch, Innenseite Oberarm:</b>&nbsp;starke Bewegung, mehr Schmerz, mehr Schwellung, mehr Veränderung über Zeit.</li>'
+          . '<li aria-level="1"><b>Hände, Finger, Füße:</b>&nbsp;schnelles Verblassen; Realismus verliert dort Micro-Details besonders schnell.</li>'
+          // full stop added — this was the only bullet missing one
+          . '<li aria-level="1"><b>Armbeuge / Kniekehle:</b>&nbsp;dauerhaftes Falten kann Verläufe weicher machen und Kontrast reduzieren.</li>'
+          . '</ul>'
+        ),
+
+        // keeps Schritt 3-5; drops the editorial note and 3 English paragraphs
+        'f3dd737' => array('editor' =>
+            '<p><b>Schritt 3: Artist auswählen (Spezialist-Matching)</b><b><br></b>'
+          . 'Black-and-Grey Realism ist kein einzelner Skill. Portraits, Tiere, religiöser Realismus und surrealer '
+          . 'Grey-Realism brauchen unterschiedliche Stärken. Wir matchen dich mit dem Artist, dessen&nbsp;'
+          . '<b>abgeheiltes Portfolio</b> am besten zu deinem Motiv und deinem gewünschten Finish passt.</p>'
+
+          . '<p><b>Schritt 4: Tattoo-Session (Technik + Qualitätskontrolle)</b><b><br></b>'
+          . 'Am Tag der Session achten wir auf sauberen Stencil-Flow, gleichmäßige Sättigung und kontrolliertes '
+          . 'Greywash-Layering. Kontrast wird intelligent aufgebaut, ohne die Haut zu überarbeiten—für glatte '
+          . 'Verläufe und stabile Schwarztöne als Basis eines langlebigen Black-and-Grey-Realism-Tattoos.</p>'
+
+          . '<p><b>Schritt 5: Folgetermin (falls nötig) + Langzeit-Guidance</b><b><br></b>'
+          . 'Wenn nach dem Heilen eine kleine Optimierung sinnvoll ist (bei großen Realismus-Arbeiten normal), '
+          . 'planen wir eine Kontrolle/Tattoo-Nacharbeit. Du bekommst außerdem klare Aftercare- und '
+          . 'Sonnenschutz-Guidelines—denn Realismus bleibt scharf, wenn er geschützt wird.</p>'
+        ),
+    ),
+
+    /* ==================================================================
+     * 2813 — /en/black-grey-realism-en/  (Black & Grey Realism, EN)
+     *
+     * Same editorial note, English wording, appended after Step 5. Verified
+     * that this page carries NONE of the sponsorship paragraphs, so this is
+     * the only cut needed here.
+     * ================================================================== */
+    2813 => array(
+
+        'd936f2a' => array('editor' =>
+            '<p><b>Step 3: Choose the Artist (Specialist Matching)</b><b><br></b>'
+          . 'Black and grey realism isn’t one single skill. Portrait realism, animals, religious realism, and '
+          . 'surreal grayscale all demand different strengths. We match you with the artist whose&nbsp;'
+          . '<b>healed portfolio</b>&nbsp;best fits your subject and the finish you want '
+          . '(soft realism vs high-contrast realism).</p>'
+
+          . '<p><b>Step 4: Tattoo Making (Technique + Quality Control)</b><b><br></b>'
+          . 'On the day, we focus on clean stencil flow, consistent saturation, and controlled greywash layering. '
+          . 'We build contrast in smart stages to avoid overworking the skin—keeping gradients smooth and blacks '
+          . 'solid, which is the foundation of a long-lasting black and grey realism tattoo.</p>'
+
+          . '<p><b>Step 5: Reconsultation (If Needed) + Long-Term Guidance</b><b><br></b>'
+          . 'If your piece needs a small refinement after healing (common with large realism), we schedule a '
+          . 'recheck/touch-up. You’ll also receive clear aftercare and sun-protection guidance—because realism '
+          . 'stays crisp when it’s protected.</p>'
         ),
     ),
 );
