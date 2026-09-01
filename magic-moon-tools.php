@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 5.5.0
+Version: 5.6.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -142,35 +142,77 @@ function mm_apply_text_fixes() {
         return $n;
     };
 
+    // The same rule has to be attempted in every encoding the database might
+    // be holding it in:
+    //   1) as written .......... post_content, and ASCII-only Elementor data
+    //   2) fully JSON-escaped .. Elementor's own output: "ü", "<\/p>", "\""
+    //   3) half-escaped ........ after corrections/json-normalize has run:
+    //                            unicode and slashes are plain again, but a
+    //                            double quote inside HTML attributes is still
+    //                            stored as \" because JSON requires it.
+    // Rules that contain HTML attributes only match in forms 2 and 3, and
+    // which of the two applies depends on whether the normaliser has been run
+    // yet — so all three are always attempted.
+    $variants = function ($s) {
+        $out = array($s);
+        $full = trim(wp_json_encode($s), '"');
+        $half = trim(json_encode($s, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), '"');
+        foreach (array($full, $half) as $v) {
+            if (is_string($v) && $v !== '' && !in_array($v, $out, true)) $out[] = $v;
+        }
+        return $out;
+    };
+
     $report = array();
     foreach ($pairs as $from => $to) {
-        // 1) as written — matches post_content and any ASCII-only Elementor data
-        $n = $run($from, $to);
-
-        // 2) JSON-escaped — Elementor stores "ü" as ü inside _elementor_data,
-        //    so a rule containing umlauts needs this second pass to match at all.
-        $fromJson = trim(wp_json_encode($from), '"');
-        $toJson   = trim(wp_json_encode($to), '"');
-        if ($fromJson !== $from) {
-            $n += $run($fromJson, $toJson);
+        $fromForms = $variants($from);
+        $n = 0;
+        foreach ($fromForms as $i => $f) {
+            // encode the replacement the same way as the pattern it answers
+            if ($to === '') {
+                $t = '';
+            } elseif ($i === 0) {
+                $t = $to;
+            } elseif ($i === 1) {
+                $t = trim(wp_json_encode($to), '"');
+            } else {
+                $t = trim(json_encode($to, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), '"');
+            }
+            $n += $run($f, $t);
         }
-
         $report[] = mb_substr($from, 0, 44) . ($n ? " -> $n" : ' -> NO MATCH');
     }
 
-    // Confirm nothing was left behind
-    $left = (int) $wpdb->get_var(
-        "SELECT COUNT(*) FROM {$wpdb->postmeta}
-         WHERE meta_key='_elementor_data' AND meta_value LIKE '%Franchise%'"
-    );
+    // Verify: count anything the rules were supposed to remove that is still
+    // present, in any of its encodings. Reported per rule so a partial match
+    // is visible instead of being hidden behind an overall "success".
+    $leftover = array();
+    foreach ($pairs as $from => $to) {
+        $still = 0;
+        foreach ($variants($from) as $f) {
+            $still += (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->postmeta}
+                  WHERE meta_key='_elementor_data' AND meta_value LIKE %s",
+                '%' . $wpdb->esc_like($f) . '%'
+            ));
+            $still += (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_content LIKE %s",
+                '%' . $wpdb->esc_like($f) . '%'
+            ));
+        }
+        if ($still > 0) {
+            $leftover[] = mb_substr($from, 0, 34) . ' x' . $still;
+        }
+    }
 
     mm_force_elementor_css_rebuild();
+
     return 'SUCCESS: text fixes applied. ' . implode(' | ', $report)
-         . ' || pages still containing "Franchise": ' . $left;
+         . ' || STILL PRESENT: ' . ($leftover ? implode(', ', $leftover) : 'nothing — all rules fully applied');
 }
 
 add_action('admin_init', function () {
-    mm_run_once('mm_text_fixes_done', '5.3.0', 'mm_apply_text_fixes', 'mm_text_fixes_result');
+    mm_run_once('mm_text_fixes_done', '5.6.0', 'mm_apply_text_fixes', 'mm_text_fixes_result');
 });
 
 /**
