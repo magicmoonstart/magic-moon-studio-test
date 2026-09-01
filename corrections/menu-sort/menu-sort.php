@@ -111,6 +111,8 @@ function mm_menu_sort_menu_of($item_id) {
  * Alphabetise every listed submenu.
  */
 function mm_menu_sort_apply() {
+    global $wpdb;
+
     $targets = mm_menu_sort_targets();
     if (!$targets) return 'ERROR: no sort targets configured.';
 
@@ -140,10 +142,26 @@ function mm_menu_sort_apply() {
         }
 
         // build id => node, and children lists
+        //
+        // Orphans matter here. If an item's menu_item_parent points at an id
+        // that is no longer in the menu, that item is unreachable from the
+        // root, the rebuilt list comes out short, and the whole menu gets
+        // skipped by the completeness guard below — which is exactly how an
+        // earlier version of this failed silently. Such items are treated as
+        // top-level for ordering purposes only; nothing is written to their
+        // parent meta.
+        $validIds = array();
+        foreach ($items as $it) $validIds[(int) $it->ID] = true;
+
+        $orphans  = 0;
         $children = array();          // parent id (0 = root) => array of items
         foreach ($items as $it) {
             $p = (int) $it->menu_item_parent;
+            if ($p !== 0 && !isset($validIds[$p])) { $p = 0; $orphans++; }
             $children[$p][] = $it;
+        }
+        if ($orphans) {
+            $report[] = sprintf('note: menu %d has %d item(s) whose parent no longer exists - ordered as top level', $menu_id, $orphans);
         }
 
         // sort the requested sibling lists
@@ -187,18 +205,24 @@ function mm_menu_sort_apply() {
             );
         }
 
-        // flatten depth-first and renumber 1..N
+        // flatten depth-first and renumber 1..N.
+        // $seen guards against a parent chain that loops back on itself, which
+        // would otherwise recurse until PHP dies.
         $order = array();
-        $walk = function ($parent_id) use (&$walk, &$children, &$order) {
+        $seen  = array();
+        $walk = function ($parent_id) use (&$walk, &$children, &$order, &$seen) {
             if (empty($children[$parent_id])) return;
             foreach ($children[$parent_id] as $it) {
-                $order[] = (int) $it->ID;
-                $walk((int) $it->ID);
+                $id = (int) $it->ID;
+                if (isset($seen[$id])) continue;
+                $seen[$id] = true;
+                $order[] = $id;
+                $walk($id);
             }
         };
         $walk(0);
 
-        // safety: every item must appear exactly once
+        // safety: every item must be accounted for
         if (count($order) !== count($items)) {
             $errors++;
             $report[] = sprintf(
@@ -208,9 +232,32 @@ function mm_menu_sort_apply() {
             continue;
         }
 
+        // Write menu_order directly. wp_update_post() fires the full save_post
+        // stack on every one of ~95 rows, which other plugins hook into and
+        // which can quietly re-sanitise a nav_menu_item; menu_order is a plain
+        // column on wp_posts, so a direct update is both safer and far faster.
+        $written = 0;
         foreach ($order as $i => $id) {
-            wp_update_post(array('ID' => $id, 'menu_order' => $i + 1));
+            $ok = $wpdb->update(
+                $wpdb->posts,
+                array('menu_order' => $i + 1),
+                array('ID' => $id),
+                array('%d'),
+                array('%d')
+            );
+            if ($ok !== false) $written++;
+            clean_post_cache($id);
         }
+        $report[] = sprintf('menu %d: %d of %d rows renumbered', $menu_id, $written, count($order));
+
+        wp_cache_delete($menu_id, 'nav_menu_items');
+    }
+
+    // The header is an Elementor template and Elementor caches rendered element
+    // output. Without clearing that, the database order changes but the menu on
+    // the page keeps rendering from cache.
+    if (function_exists('mm_force_elementor_css_rebuild')) {
+        mm_force_elementor_css_rebuild();
     }
 
     update_option('mm_menu_sort_backup', $backup);

@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 6.4.1
+Version: 6.5.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -405,6 +405,38 @@ function mm_state_report() {
             'empty_bg'      => preg_match_all('/"background_image":\{"url":""/', (string) $raw),
         );
     }
+    // Gate results for the recent corrections, so what actually happened on the
+    // server can be read without asking anyone to copy text out of wp-admin.
+    // This is what turned "nothing changed on the front end" from guesswork
+    // into a diagnosis.
+    $report['recent'] = array();
+    foreach (array(
+        'menu_sort'    => array('mm_menu_sort_done',    'mm_menu_sort_result'),
+        'menu_items'   => array('mm_menu_items_done',   'mm_menu_items_result'),
+        'menu_static'  => array('mm_menu_static_done',  'mm_menu_static_result'),
+        'page_clone'   => array('mm_page_clone_done',   'mm_page_clone_result'),
+        'translate_de' => array('mm_translate_de_done', 'mm_translate_de_result'),
+        'remove_blocks'=> array('mm_remove_blocks_done','mm_remove_blocks_result'),
+        'text_fixes'   => array('mm_text_fixes_done',   'mm_text_fixes_result'),
+    ) as $key => $opts) {
+        $report['recent'][$key] = array(
+            'gate'   => get_option($opts[0], '(never ran)'),
+            'result' => mb_substr((string) get_option($opts[1], '(none)'), 0, 700),
+        );
+    }
+
+    // Live alphabetical state of every submenu the sorter targets.
+    if (function_exists('mm_menu_sort_state')) {
+        $report['submenus'] = array();
+        foreach (mm_menu_sort_state() as $row) {
+            $report['submenus'][$row['label']] = array(
+                'items'  => $row['count'],
+                'sorted' => $row['sorted'] ? 'yes' : 'NO',
+                'first'  => $row['first'],
+            );
+        }
+    }
+
     $report['fix_status'] = array(
         'home_done'      => get_option('mm_home_fix_done', '(never)'),
         'home_result'    => get_option('mm_home_fix_result', '(none)'),
@@ -982,7 +1014,7 @@ add_action('admin_init', function () {
     mm_run_once('mm_remove_blocks_done', '5.9.0', 'mm_remove_blocks', 'mm_remove_blocks_result');
     mm_run_once('mm_menu_items_done', '6.0.0', 'mm_add_missing_menu_items', 'mm_menu_items_result');
     // After the two missing entries exist, so they are included in the sort.
-    mm_run_once('mm_menu_sort_done', '6.4.0', 'mm_menu_sort_apply', 'mm_menu_sort_result');
+    mm_run_once('mm_menu_sort_done', '6.5.0', 'mm_menu_sort_apply', 'mm_menu_sort_result');
 });
 
 // WebP converter (corrections/webp-conversion) — manual, button-driven, never auto-runs.
