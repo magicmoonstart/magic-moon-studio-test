@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 5.2.0
+Version: 5.3.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -128,8 +128,7 @@ function mm_apply_text_fixes() {
         return 'ERROR: text-fix map is empty or invalid.';
     }
 
-    $report = array();
-    foreach ($pairs as $from => $to) {
+    $run = function ($from, $to) use ($wpdb) {
         $n  = (int) $wpdb->query($wpdb->prepare(
             "UPDATE {$wpdb->postmeta} SET meta_value = REPLACE(meta_value, %s, %s)
              WHERE meta_key = '_elementor_data' AND meta_value LIKE %s",
@@ -140,16 +139,38 @@ function mm_apply_text_fixes() {
              WHERE post_content LIKE %s",
             $from, $to, '%' . $wpdb->esc_like($from) . '%'
         ));
-        $short = mb_substr($from, 0, 46);
-        $report[] = $short . ($n ? " -> $n row(s)" : ' -> NO MATCH');
+        return $n;
+    };
+
+    $report = array();
+    foreach ($pairs as $from => $to) {
+        // 1) as written — matches post_content and any ASCII-only Elementor data
+        $n = $run($from, $to);
+
+        // 2) JSON-escaped — Elementor stores "ü" as ü inside _elementor_data,
+        //    so a rule containing umlauts needs this second pass to match at all.
+        $fromJson = trim(wp_json_encode($from), '"');
+        $toJson   = trim(wp_json_encode($to), '"');
+        if ($fromJson !== $from) {
+            $n += $run($fromJson, $toJson);
+        }
+
+        $report[] = mb_substr($from, 0, 44) . ($n ? " -> $n" : ' -> NO MATCH');
     }
 
+    // Confirm nothing was left behind
+    $left = (int) $wpdb->get_var(
+        "SELECT COUNT(*) FROM {$wpdb->postmeta}
+         WHERE meta_key='_elementor_data' AND meta_value LIKE '%Franchise%'"
+    );
+
     mm_force_elementor_css_rebuild();
-    return 'SUCCESS: text fixes applied. ' . implode(' | ', $report);
+    return 'SUCCESS: text fixes applied. ' . implode(' | ', $report)
+         . ' || pages still containing "Franchise": ' . $left;
 }
 
 add_action('admin_init', function () {
-    mm_run_once('mm_text_fixes_done', '5.2.0', 'mm_apply_text_fixes', 'mm_text_fixes_result');
+    mm_run_once('mm_text_fixes_done', '5.3.0', 'mm_apply_text_fixes', 'mm_text_fixes_result');
 });
 
 /**
@@ -317,7 +338,7 @@ function mm_state_report() {
     if ($home_en) $pages['home_en']  = $home_en->ID;
     if ($blogs)   $pages['blogs']    = $blogs->ID;
 
-    $report = array('plugin_version' => '5.2.0', 'pages' => array());
+    $report = array('plugin_version' => '5.3.0', 'pages' => array());
     foreach ($pages as $label => $pid) {
         $raw = get_post_meta($pid, '_elementor_data', true);
         if (!is_string($raw)) $raw = wp_json_encode($raw);
