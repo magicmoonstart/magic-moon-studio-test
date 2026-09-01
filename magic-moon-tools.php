@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 6.6.0
+Version: 6.7.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -1001,6 +1001,8 @@ try {
     require_once __DIR__ . '/corrections/menu-items/menu-items.php';
     // Alphabetise the submenus in both languages
     require_once __DIR__ . '/corrections/menu-sort/menu-sort.php';
+    // Stop Elementor blanking container background images
+    require_once __DIR__ . '/corrections/lazyload-fix/lazyload-fix.php';
     // Swap a specific container background photo on a specific page
     require_once __DIR__ . '/corrections/bg-images/bg-images.php';
 } catch (\Throwable $e) {
@@ -1017,7 +1019,7 @@ add_action('admin_init', function () {
     mm_run_once('mm_menu_items_done', '6.0.0', 'mm_add_missing_menu_items', 'mm_menu_items_result');
     // After the two missing entries exist, so they are included in the sort.
     mm_run_once('mm_menu_sort_done', '6.5.0', 'mm_menu_sort_apply', 'mm_menu_sort_result');
-    mm_run_once('mm_bg_images_done', '6.6.0', 'mm_apply_bg_image_swaps', 'mm_bg_images_result');
+    mm_run_once('mm_bg_images_done', '6.7.0', 'mm_apply_bg_image_swaps', 'mm_bg_images_result');
 });
 
 // WebP converter (corrections/webp-conversion) — manual, button-driven, never auto-runs.

@@ -35,7 +35,9 @@ if (!defined('ABSPATH')) exit;
 function mm_bg_image_map() {
     return array(
         // /anti-tragus/ (DE) — first block's image column only
-        621 => array('Piercing-Anti_Tragus-3.jpg' => 'Piercing-Anti_Tragus-1.jpg'),
+        621  => array('Piercing-Anti_Tragus-3.jpg' => 'Piercing-Anti_Tragus-1.jpg'),
+        // /en/anti-tragus-en/ (EN) — same block, kept identical to the German page
+        5088 => array('Piercing-Anti_Tragus-3.jpg' => 'Piercing-Anti_Tragus-1.jpg'),
     );
 }
 
