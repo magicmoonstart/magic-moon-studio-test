@@ -62,6 +62,20 @@ return array(
     // empty shell left by the fallback above
     '<p>' . $mm_span . '</span></p>' => '',
 
+    /* ==================================================================
+     * Navel / belly button page, requested 2026-09-01.
+     * Two defects in the supplied copy, fixed sitewide so the German and
+     * English pages stay identical.
+     * ================================================================== */
+
+    // Step 1 heading was left in German inside otherwise English copy
+    '1) Intensivberatung buchen (Health and Hygiene)'
+        => '1) Book an Intensive Consultation (Health and Hygiene)',
+
+    // stray character at the end of the "Style versatility" bullet
+    'evolve with personal style over time.q'
+        => 'evolve with personal style over time.',
+
     /* ------------------------------------------------------------------
      * Requested earlier: remove "Franchise" from the partner-studio pages
      * — heading AND body copy, both languages.

@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 5.6.0
+Version: 5.7.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -212,7 +212,7 @@ function mm_apply_text_fixes() {
 }
 
 add_action('admin_init', function () {
-    mm_run_once('mm_text_fixes_done', '5.6.0', 'mm_apply_text_fixes', 'mm_text_fixes_result');
+    mm_run_once('mm_text_fixes_done', '5.7.0', 'mm_apply_text_fixes', 'mm_text_fixes_result');
 });
 
 /**
@@ -953,12 +953,16 @@ try {
     require_once __DIR__ . '/corrections/json-normalize/normalizer.php';
     // Grouping menu labels ("Piercing") must not navigate anywhere
     require_once __DIR__ . '/corrections/menu-fix/menu-fix.php';
+    // Copy a finished page layout onto its untranslated counterpart
+    require_once __DIR__ . '/corrections/page-clone/page-clone.php';
 } catch (\Throwable $e) {
     update_option('mm_perf_load_error', $e->getMessage());
 }
 
 add_action('admin_init', function () {
     mm_run_once('mm_menu_static_done', '5.5.0', 'mm_fix_static_menu_items', 'mm_menu_static_result');
+    // Runs after the text fixes above, so the layout copied across is already corrected.
+    mm_run_once('mm_page_clone_done', '5.7.0', 'mm_clone_page_layouts', 'mm_page_clone_result');
 });
 
 // WebP converter (corrections/webp-conversion) — manual, button-driven, never auto-runs.
@@ -1023,6 +1027,10 @@ function mm_tools_page() {
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'menu_static' && function_exists('mm_fix_static_menu_items')) {
         $message = mm_fix_static_menu_items();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'page_clone' && function_exists('mm_clone_page_layouts')) {
+        $message = mm_clone_page_layouts();
     }
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'webp_generate' && function_exists('mm_webp_generate_batch')) {
@@ -1172,6 +1180,35 @@ function mm_tools_page() {
             <?php submit_button('Make Grouping Labels Static', 'secondary', 'submit', false); ?>
         </form>
         <p style="color:#666;font-size:12px;">Runs automatically once on deploy. This button re-applies it if a later menu edit reintroduces a URL.</p>
+
+        <hr>
+
+        <h2>Page layout clones</h2>
+        <p style="max-width:760px;">Copies a finished page's Elementor layout onto a counterpart that never received
+           its own content. The background photographs live inside that layout, so copying it reproduces
+           the design and the images together. Titles, slugs, menus and language links are not touched,
+           and the previous layout is saved to <code>uploads/mm-rollback-&lt;id&gt;.json</code> first.</p>
+        <?php if (function_exists('mm_page_clone_state')): foreach (mm_page_clone_state() as $c): ?>
+        <table class="widefat striped" style="max-width:860px;margin-bottom:12px;">
+            <tbody>
+                <tr><th style="width:150px;">Clone</th><td><?= esc_html($c['label']) ?></td></tr>
+                <tr><th>Source <?= (int) $c['source'] ?></th>
+                    <td><?= (int) $c['srcBytes'] ?> bytes &middot; images:
+                        <code><?= esc_html($c['srcImgs'] ? implode(', ', $c['srcImgs']) : 'none') ?></code></td></tr>
+                <tr><th>Target <?= (int) $c['target'] ?></th>
+                    <td><?= (int) $c['tgtBytes'] ?> bytes &middot; images:
+                        <code><?= esc_html($c['tgtImgs'] ? implode(', ', $c['tgtImgs']) : 'none') ?></code></td></tr>
+                <tr><th>State</th><td><?= $c['match']
+                        ? '<span style="color:#1a7f37;font-weight:600;">identical — clone applied</span>'
+                        : '<span style="color:#b32d2e;font-weight:600;">different — not yet cloned</span>' ?></td></tr>
+            </tbody>
+        </table>
+        <?php endforeach; endif; ?>
+        <form method="post" style="display:inline-block;">
+            <input type="hidden" name="mm_action" value="page_clone">
+            <?php submit_button('Copy Page Layouts', 'secondary', 'submit', false); ?>
+        </form>
+        <p style="color:#666;font-size:12px;">Runs automatically once on deploy. Re-run only if the source page changes and you want the copy refreshed.</p>
 
         <hr>
 
