@@ -127,4 +127,51 @@ return array(
 
         '080767f' => array('text' => 'Beratungstermin', 'link' => array('url' => '/contact/')),
     ),
+
+    /* ==================================================================
+     * 453 — /realismus/  (Realismus-Tattoos)
+     *
+     * Requested 2026-09-01: complete "Schritt 5 — Nachkontrolle".
+     *
+     * The German text was already there but stopped mid-sentence, at
+     * "...Kontrast-Boost sinnvoll ist," with nothing after the comma. The
+     * English page (post 2800) carries the finished sentence, so the ending
+     * is translated from that rather than invented.
+     *
+     * Two further defects in the same widget, fixed while rewriting it:
+     *   - Schritt 2 had <b> wrapped around the heading AND the whole body,
+     *     so the entire paragraph rendered bold.
+     *   - Schritt 3's heading was not bold, unlike steps 1, 4 and 5.
+     *
+     * Markup follows this page's own pattern, taken from the correct
+     * Schritt 1 block in widget b005757:
+     *     <p><b>Schritt N — Titel</b><b><br></b>Fließtext</p>
+     * (This page does not use the <span style="font-weight: 400;"> wrapper
+     * that the English pages use — matching it here would change the look.)
+     * ================================================================== */
+    453 => array(
+
+        '7df3017' => array('editor' =>
+            '<p><b>Schritt 2 — Design optimieren</b><b><br></b>'
+          . 'Wir passen die Komposition an die Haut an: klarer Fokus, lesbarer Hintergrund und ein Kontrastplan, '
+          . 'der das Abheilen übersteht. Wenn die Referenz nicht stark genug ist (unscharf, schlechtes Licht, harte '
+          . 'Schatten, falscher Winkel), bitten wir um besseres Material—denn Realismus steht und fällt mit '
+          . 'Referenzqualität und Schattierungsplanung.</p>'
+
+          . '<p><b>Schritt 3 — Artist auswählen</b><b><br></b>'
+          . 'Realismus ist nicht „one size fits all“. Wir matchen dich mit dem passenden Spezialisten:&nbsp;'
+          . '<b>Black and Grey Realism</b>,&nbsp;<b>Color Realism</b>,&nbsp;<b>Portrait Realism</b>, Tiere oder '
+          . 'cineastischer Realismus—nach Portfolio-Fit, nicht nur nach Verfügbarkeit.</p>'
+
+          . '<p><b>Schritt 4 — Tattoo machen (Session-Plan + Umsetzung)</b><b><br></b>'
+          . 'Wir positionieren das Stencil anatomisch, um Verzerrung zu minimieren, und bauen das Motiv in '
+          . 'kontrollierten Layern auf (Struktur → Mitteltöne → dunkle Werte → Textur). Größere Realismus-Projekte '
+          . 'teilen wir bei Bedarf in mehrere Sessions, um die Haut zu schützen und Details zu sichern.</p>'
+
+          . '<p><b>Schritt 5 — Nachkontrolle (falls nötig)</b><b><br></b>'
+          . 'Nach der Heilung beurteilen wir das Tattoo im echten Leben (nicht nur auf frischen Fotos). Wenn eine '
+          . 'kleine Verfeinerung oder ein gezielter Kontrast-Boost sinnvoll ist, planen wir sie strategisch—damit '
+          . 'dein Realismus-Tattoo scharf, lesbar und langlebig bleibt.</p>'
+        ),
+    ),
 );
