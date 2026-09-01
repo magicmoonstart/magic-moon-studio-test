@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 5.7.0
+Version: 5.8.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -955,14 +955,18 @@ try {
     require_once __DIR__ . '/corrections/menu-fix/menu-fix.php';
     // Copy a finished page layout onto its untranslated counterpart
     require_once __DIR__ . '/corrections/page-clone/page-clone.php';
+    // Then put German copy on the German page
+    require_once __DIR__ . '/corrections/translate-de/translate-de.php';
 } catch (\Throwable $e) {
     update_option('mm_perf_load_error', $e->getMessage());
 }
 
 add_action('admin_init', function () {
     mm_run_once('mm_menu_static_done', '5.5.0', 'mm_fix_static_menu_items', 'mm_menu_static_result');
-    // Runs after the text fixes above, so the layout copied across is already corrected.
+    // Order matters: the clone brings the layout and the photographs across,
+    // then the translation replaces the English text it arrives with.
     mm_run_once('mm_page_clone_done', '5.7.0', 'mm_clone_page_layouts', 'mm_page_clone_result');
+    mm_run_once('mm_translate_de_done', '5.8.0', 'mm_apply_de_translations', 'mm_translate_de_result');
 });
 
 // WebP converter (corrections/webp-conversion) — manual, button-driven, never auto-runs.
@@ -1031,6 +1035,10 @@ function mm_tools_page() {
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'page_clone' && function_exists('mm_clone_page_layouts')) {
         $message = mm_clone_page_layouts();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'translate_de' && function_exists('mm_apply_de_translations')) {
+        $message = mm_apply_de_translations();
     }
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'webp_generate' && function_exists('mm_webp_generate_batch')) {
@@ -1209,6 +1217,37 @@ function mm_tools_page() {
             <?php submit_button('Copy Page Layouts', 'secondary', 'submit', false); ?>
         </form>
         <p style="color:#666;font-size:12px;">Runs automatically once on deploy. Re-run only if the source page changes and you want the copy refreshed.</p>
+
+        <h2>German page copy</h2>
+        <p style="max-width:760px;">A cloned layout arrives with the source language's text. This writes the German copy over it,
+           addressing each element by its Elementor id so nothing depends on matching English strings.
+           Wording follows the studio's already-translated <code>/ohrlaeppchen/</code> page.
+           <strong>Run the layout clone first</strong> &mdash; if any widget id is missing, nothing is written at all
+           rather than leaving a half-translated page.</p>
+        <?php if (function_exists('mm_de_translation_state')): ?>
+        <table class="widefat striped" style="max-width:640px;margin-bottom:12px;">
+            <thead><tr><th>Post</th><th>Widgets expected</th><th>Found in layout</th><th>Already German</th></tr></thead>
+            <tbody>
+            <?php foreach (mm_de_translation_state() as $row): ?>
+                <tr>
+                    <td><?= (int) $row['post'] ?></td>
+                    <td><?= (int) $row['total'] ?></td>
+                    <td><?= $row['found'] === $row['total']
+                            ? '<span style="color:#1a7f37;font-weight:600;">' . (int) $row['found'] . '</span>'
+                            : '<span style="color:#b32d2e;font-weight:600;">' . (int) $row['found'] . ' — clone not applied</span>' ?></td>
+                    <td><?= $row['done'] === $row['total']
+                            ? '<span style="color:#1a7f37;font-weight:600;">all ' . (int) $row['done'] . '</span>'
+                            : (int) $row['done'] . ' of ' . (int) $row['total'] ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php endif; ?>
+        <form method="post" style="display:inline-block;">
+            <input type="hidden" name="mm_action" value="translate_de">
+            <?php submit_button('Apply German Copy', 'secondary', 'submit', false); ?>
+        </form>
+        <p style="color:#666;font-size:12px;">Runs automatically once on deploy, immediately after the layout clone.</p>
 
         <hr>
 
