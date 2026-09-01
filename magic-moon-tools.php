@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 5.3.0
+Version: 5.4.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -338,7 +338,7 @@ function mm_state_report() {
     if ($home_en) $pages['home_en']  = $home_en->ID;
     if ($blogs)   $pages['blogs']    = $blogs->ID;
 
-    $report = array('plugin_version' => '5.3.0', 'pages' => array());
+    $report = array('plugin_version' => '5.4.0', 'pages' => array());
     foreach ($pages as $label => $pid) {
         $raw = get_post_meta($pid, '_elementor_data', true);
         if (!is_string($raw)) $raw = wp_json_encode($raw);
@@ -907,6 +907,8 @@ add_action('wp_footer', 'mm_render_consult_popup', 20);
 try {
     require_once __DIR__ . '/corrections/performance/mm-performance.php';
     require_once __DIR__ . '/corrections/performance/webp-generator.php';
+    // Rewrites Elementor data as plain UTF-8 so content edits match what you type
+    require_once __DIR__ . '/corrections/json-normalize/normalizer.php';
 } catch (\Throwable $e) {
     update_option('mm_perf_load_error', $e->getMessage());
 }
@@ -965,6 +967,10 @@ function mm_tools_page() {
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'text_fixes') {
         $message = mm_apply_text_fixes();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'json_normalize' && function_exists('mm_normalize_elementor_json')) {
+        $message = mm_normalize_elementor_json();
     }
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'webp_generate' && function_exists('mm_webp_generate_batch')) {
@@ -1062,6 +1068,27 @@ function mm_tools_page() {
         <?php $ar = get_option('mm_artist_fix_result', ''); if ($ar): ?>
             <p style="color:#666;font-size:12px;margin:4px 0 0;"><strong>Artists:</strong> <?= esc_html($ar) ?></p>
         <?php endif; ?>
+
+        <hr>
+
+        <h2>Normalise Elementor Data (do this before text edits)</h2>
+        <?php $jn = function_exists('mm_json_norm_progress') ? mm_json_norm_progress() : array('total'=>0,'done'=>0);
+              $jpct = $jn['total'] ? round($jn['done']/$jn['total']*100) : 0;
+              $jrem = function_exists('mm_json_norm_remaining') ? mm_json_norm_remaining() : -1; ?>
+        <p>Elementor saves text as <code>Unterst\u00fctzung</code> and URLs as <code>https:\/\/…</code>.
+           Byte-for-byte search &amp; replace therefore never matches what you actually type &mdash; which is why the
+           German heading did not change while the English one did. This rewrites every row as plain UTF-8.
+           Elementor reads both forms identically, so nothing on the site changes visually.<br>
+           <strong><?= (int)$jn['done'] ?> / <?= (int)$jn['total'] ?></strong> rows processed (<?= $jpct ?>%)
+           <?php if ($jrem >= 0): ?>&middot; rows still holding escaped sequences: <strong><?= $jrem ?></strong><?php endif; ?></p>
+        <div style="background:#e0e0e0;border-radius:4px;height:20px;max-width:460px;margin-bottom:12px;">
+            <div style="background:#2271b1;height:20px;border-radius:4px;width:<?= $jpct ?>%;"></div>
+        </div>
+        <form method="post" style="display:inline-block;">
+            <input type="hidden" name="mm_action" value="json_normalize">
+            <?php submit_button('Normalise Elementor Data', 'primary', 'submit', false); ?>
+        </form>
+        <p style="color:#666;font-size:12px;">Each click works for about 18 seconds and resumes where it stopped. Keep clicking until it says finished.</p>
 
         <hr>
 
