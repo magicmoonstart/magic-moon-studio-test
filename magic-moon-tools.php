@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 6.8.0
+Version: 7.0.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -422,6 +422,14 @@ function mm_state_report() {
         $report['recent'][$key] = array(
             'gate'   => get_option($opts[0], '(never ran)'),
             'result' => mb_substr((string) get_option($opts[1], '(none)'), 0, 700),
+        );
+    }
+
+    if (function_exists('mm_render_state')) {
+        $report['renderer'] = mm_render_state();
+        $report['recent']['render_fontawesome'] = array(
+            'gate'   => get_option('mm_render_fa_done', '(never ran)'),
+            'result' => (string) get_option('mm_render_fa_result', '(none)'),
         );
     }
 
@@ -1003,6 +1011,8 @@ try {
     require_once __DIR__ . '/corrections/menu-sort/menu-sort.php';
     // Phase 1 of replacing Elementor: read-only dependency audit
     require_once __DIR__ . '/corrections/elementor-audit/audit.php';
+    // Phase 2: our own renderer for every page, header and footer (see corrections/renderer)
+    require_once __DIR__ . '/corrections/renderer/renderer.php';
     // Stop Elementor blanking container background images
     require_once __DIR__ . '/corrections/lazyload-fix/lazyload-fix.php';
     // Swap a specific container background photo on a specific page
@@ -1022,6 +1032,10 @@ add_action('admin_init', function () {
     // After the two missing entries exist, so they are included in the sort.
     mm_run_once('mm_menu_sort_done', '6.5.0', 'mm_menu_sort_apply', 'mm_menu_sort_result');
     mm_run_once('mm_bg_images_done', '6.7.0', 'mm_apply_bg_image_swaps', 'mm_bg_images_result');
+    // Self-host Font Awesome so icons survive Elementor's removal
+    if (function_exists('mm_render_copy_fontawesome')) {
+        mm_run_once('mm_render_fa_done', '7.0.0', 'mm_render_copy_fontawesome', 'mm_render_fa_result');
+    }
 });
 
 // WebP converter (corrections/webp-conversion) — manual, button-driven, never auto-runs.
@@ -1114,6 +1128,22 @@ function mm_tools_page() {
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'bg_images' && function_exists('mm_apply_bg_image_swaps')) {
         $message = mm_apply_bg_image_swaps();
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'render_mode' && function_exists('mm_render_mode')) {
+        $mode = isset($_POST['mm_render_mode']) ? sanitize_key($_POST['mm_render_mode']) : 'on';
+        if (in_array($mode, array('on', 'preview', 'off'), true)) {
+            update_option('mm_render_mode', $mode);
+            $message = 'Renderer mode set to "' . $mode . '".';
+        }
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'render_test' && function_exists('mm_render_test')) {
+        $message = mm_render_test((int) (isset($_POST['mm_render_post']) ? $_POST['mm_render_post'] : 0));
+    }
+
+    if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'render_fa' && function_exists('mm_render_copy_fontawesome')) {
+        $message = mm_render_copy_fontawesome();
     }
 
     if (isset($_POST['mm_action']) && $_POST['mm_action'] === 'webp_generate' && function_exists('mm_webp_generate_batch')) {
@@ -1427,6 +1457,44 @@ function mm_tools_page() {
         </form>
         <p style="color:#666;font-size:12px;">Runs automatically once on deploy. The order every item had beforehand is
            saved first, so <strong>Restore Previous Order</strong> undoes it completely.</p>
+
+        <hr>
+
+        <h2 style="border-top:3px solid #2271b1;padding-top:16px;">Magic Moon renderer (replaces Elementor on the front end)</h2>
+        <?php if (function_exists('mm_render_state')): $rs = mm_render_state(); ?>
+        <p style="max-width:760px;">Every page, the header and the footer are rendered from the stored page data by our own
+           code &mdash; Elementor, ElementsKit, King Addons, Premium Addons and the Polylang bridge load nothing on the
+           front end while this is <strong>on</strong>. If a page cannot be rendered it falls back to Elementor for that
+           request and the reason is recorded below, so nothing can go blank.</p>
+        <table class="widefat striped" style="max-width:860px;margin-bottom:12px;">
+            <tbody>
+                <tr><th style="width:220px;">Renderer version</th><td><?= esc_html($rs['version']) ?></td></tr>
+                <tr><th>Mode</th><td><strong><?= esc_html($rs['mode']) ?></strong>
+                    &nbsp;&middot;&nbsp; compare any page: <code>?mm_render=1</code> (ours) / <code>?mm_render=0</code> (Elementor)</td></tr>
+                <tr><th>Last render error</th><td><code><?= esc_html($rs['last_error']) ?></code></td></tr>
+                <tr><th>Font Awesome self-hosted</th><td><?= $rs['fontawesome_self_hosted'] ? '<span style="color:#1a7f37;font-weight:600;">yes</span>' : '<span style="color:#b32d2e;">not yet &mdash; using Elementor\'s copy</span>' ?></td></tr>
+            </tbody>
+        </table>
+        <form method="post" style="display:inline-block;margin-right:8px;">
+            <input type="hidden" name="mm_action" value="render_mode">
+            <select name="mm_render_mode">
+                <option value="on" <?= $rs['mode'] === 'on' ? 'selected' : '' ?>>on &mdash; everyone sees our rendering</option>
+                <option value="preview" <?= $rs['mode'] === 'preview' ? 'selected' : '' ?>>preview &mdash; Elementor for visitors, ours with ?mm_render=1</option>
+                <option value="off" <?= $rs['mode'] === 'off' ? 'selected' : '' ?>>off</option>
+            </select>
+            <?php submit_button('Set Mode', 'primary', 'submit', false); ?>
+        </form>
+        <form method="post" style="display:inline-block;margin-right:8px;">
+            <input type="hidden" name="mm_action" value="render_test">
+            <input type="number" name="mm_render_post" placeholder="post id" style="width:110px;">
+            <?php submit_button('Dry-run Render', 'secondary', 'submit', false); ?>
+        </form>
+        <form method="post" style="display:inline-block;">
+            <input type="hidden" name="mm_action" value="render_fa">
+            <?php submit_button('Copy Font Awesome', 'secondary', 'submit', false); ?>
+        </form>
+        <p style="color:#666;font-size:12px;">Dry-run renders a post in memory and reports widget count and any unsupported widget type; it writes nothing.</p>
+        <?php endif; ?>
 
         <hr>
 
