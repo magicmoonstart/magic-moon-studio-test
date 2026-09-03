@@ -49,4 +49,23 @@ return array(
         ),
     ),
 
+    /* ==================================================================
+     * Requested 2026-09-03 for /botanisch/ (post 544, Biomechanic content).
+     * The last section - heading "Support for Growth, Visibility, and
+     * Client Reach", its four English sponsorship paragraphs and the
+     * section's own CTA - does not belong on a tattoo-style page.
+     * SCOPE: post 544 only.
+     * ================================================================== */
+    'botanisch-support-for-growth' => array(
+        'label' => 'Support for Growth, Visibility, and Client Reach (EN sponsorship section) on /botanisch/',
+        'posts' => array(544),
+        'signatures' => array(
+            'Support for Growth, Visibility, and Client Reach',
+            'Magic Moon helps individual tattoo artists grow because Magic Moon is run with real tattoo experience',
+            'Through regular collaboration, better visibility, and real product support',
+            'Magic Moon also believes in helping artists beyond the post itself',
+            'If you are an individual tattoo artist looking for real support',
+        ),
+    ),
+
 );
