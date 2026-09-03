@@ -26,7 +26,10 @@ if (!defined('ABSPATH')) exit;
 
 function mm_retire_pages_map() {
     return array(
-        546 => 'Soft Color Tattoo (/soft-color-tattoo/) - no EN twin exists',
+        546  => 'Soft Color Tattoo (/soft-color-tattoo/) - no EN twin exists',
+        // 2026-09-03: PMU section, both languages
+        979  => 'Dehnungsstreifen-Camouflage (DE /dehnungsstreifen-camouflage-nach-einzelfallpruefung/, menu item 1024)',
+        4241 => 'Stretch Mark Camouflage (EN /en/stretch-mark-camouflage-case-by-case-en/, menu item 4668)',
     );
 }
 
