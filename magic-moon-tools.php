@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 7.1.1
+Version: 7.2.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -1069,7 +1069,7 @@ add_action('mm_gates', function () {
     // Order matters: the clone brings the layout and the photographs across,
     // then the translation replaces the English text it arrives with.
     mm_run_once('mm_page_clone_done', '7.1.0', 'mm_clone_page_layouts', 'mm_page_clone_result');
-    mm_run_once('mm_translate_de_done', '7.1.0', 'mm_apply_de_translations', 'mm_translate_de_result');
+    mm_run_once('mm_translate_de_done', '7.2.0', 'mm_apply_de_translations', 'mm_translate_de_result');
     mm_run_once('mm_remove_blocks_done', '5.9.0', 'mm_remove_blocks', 'mm_remove_blocks_result');
     mm_run_once('mm_menu_items_done', '6.0.0', 'mm_add_missing_menu_items', 'mm_menu_items_result');
     // After the two missing entries exist, so they are included in the sort.

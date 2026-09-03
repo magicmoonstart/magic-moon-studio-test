@@ -344,4 +344,31 @@ return array(
 
         '5eebdc67' => array('text' => 'Terminanfrage', 'link' => array('url' => '/contact/')),
     ),
+
+    /* ==================================================================
+     * 544 — /botanisch/  (page content is the Biomechanic / biotech style)
+     *
+     * Requested 2026-09-03: the placement section (heading 5dd64f0e + text
+     * 10a8c92e) was the only block still in English on an otherwise German
+     * page. Translated here; markup mirrors the existing block exactly
+     * (<p>/<b>/&nbsp;/<ul><li aria-level="1">). Heading follows the house
+     * pattern "Wo ist die beste Stelle für ein …-Tattoo?".
+     * ================================================================== */
+    544 => array(
+
+        '5dd64f0e' => array('title' => 'Wo ist die beste Stelle für ein biotechnisches Tattoo?'),
+
+        '10a8c92e' => array('editor' =>
+            '<p>Weil&nbsp;<b>biotechnische / biomechanische Tattoos</b>&nbsp;von Tiefe, Perspektive und anatomischer Bewegung leben, sind die besten Platzierungen meist&nbsp;<b>größere Flächen mit starken Konturen</b>. Dort kann sich das Design natürlich um den Körper legen, sodass die Illusion integriert wirkt – als gehöre sie unter deine Haut.</p>'
+          . '<p>Arme und Beine sind besonders beliebt, weil Muskelgruppen und Gelenke eine natürliche Krümmung für mechanische Formen, geschichtete Schatten und realistische „aufgerissene Haut“-Effekte bieten.</p>'
+          . '<p>Unsere Top-Platzierungen für&nbsp;<b>Biotech- / Biomech-Tattoos</b>:</p>'
+          . '<ul>'
+          . '<li aria-level="1"><b>Kompletter Sleeve (Oberarm → Unterarm):</b>&nbsp;ideal für durchgehendes „Innenstruktur“-Storytelling und 3D-Übergänge.</li>'
+          . '<li aria-level="1"><b>Wade + Schienbein / ganzes Bein:</b>&nbsp;lange vertikale Fläche für Kabel, Kolben und Biomech-Panzerung.</li>'
+          . '<li aria-level="1"><b>Brust + Schulterkappe:</b>&nbsp;starke Krümmung für „Rippe-trifft-Maschine“-Konzepte.</li>'
+          . '<li aria-level="1"><b>Oberer Rücken:</b>&nbsp;viel Platz für großflächige Biomech-„Framework“-Kompositionen.</li>'
+          . '</ul>'
+          . '<p>Die Platzierung ist nicht nur eine Frage der Ästhetik – sie beeinflusst auch,&nbsp;<b>wie das Tattoo altert</b>, wie gut die Details über die Zeit lesbar bleiben und wie gut das Design im Fluss bleibt, wenn sich dein Körper bewegt.</p>'
+        ),
+    ),
 );
