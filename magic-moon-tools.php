@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 7.4.0
+Version: 7.5.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -450,6 +450,7 @@ function mm_state_report() {
         'translate_de' => array('mm_translate_de_done', 'mm_translate_de_result'),
         'remove_blocks'=> array('mm_remove_blocks_done','mm_remove_blocks_result'),
         'retire_pages' => array('mm_retire_pages_done', 'mm_retire_pages_result'),
+        'page_swap'    => array('mm_page_swap_done',    'mm_page_swap_result'),
         'text_fixes'   => array('mm_text_fixes_done',   'mm_text_fixes_result'),
     ) as $key => $opts) {
         $report['recent'][$key] = array(
@@ -1072,7 +1073,10 @@ add_action('mm_gates', function () {
     // Order matters: the clone brings the layout and the photographs across,
     // then the translation replaces the English text it arrives with.
     mm_run_once('mm_page_clone_done', '7.1.0', 'mm_clone_page_layouts', 'mm_page_clone_result');
-    mm_run_once('mm_translate_de_done', '7.2.0', 'mm_apply_de_translations', 'mm_translate_de_result');
+    if (function_exists('mm_swap_page_layouts')) {
+        mm_run_once('mm_page_swap_done', '7.5.0', 'mm_swap_page_layouts', 'mm_page_swap_result');
+    }
+    mm_run_once('mm_translate_de_done', '7.5.0', 'mm_apply_de_translations', 'mm_translate_de_result');
     mm_run_once('mm_remove_blocks_done', '7.3.0', 'mm_remove_blocks', 'mm_remove_blocks_result');
     if (function_exists('mm_retire_pages')) {
         mm_run_once('mm_retire_pages_done', '7.4.0', 'mm_retire_pages', 'mm_retire_pages_result');

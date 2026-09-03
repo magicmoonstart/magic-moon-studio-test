@@ -371,4 +371,14 @@ return array(
           . '<p>Die Platzierung ist nicht nur eine Frage der Ästhetik – sie beeinflusst auch,&nbsp;<b>wie das Tattoo altert</b>, wie gut die Details über die Zeit lesbar bleiben und wie gut das Design im Fluss bleibt, wenn sich dein Körper bewegt.</p>'
         ),
     ),
+
+    /* ==================================================================
+     * 3568 — /en/chicano-en/  (English)
+     * After the DE<->EN layout swap (page-clone), the English article's
+     * first heading still read "Unser Service". English copy for that one
+     * widget; everything else on the page is already English.
+     * ================================================================== */
+    3568 => array(
+        '694efba7' => array('title' => 'Our Services'),
+    ),
 );

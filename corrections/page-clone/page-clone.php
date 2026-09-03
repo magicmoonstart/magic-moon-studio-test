@@ -121,6 +121,55 @@ function mm_clone_page_layouts() {
     return ($errors ? 'ERROR: ' : 'SUCCESS: ') . implode(' | ', $report);
 }
 
+/* ------------------------------------------------------------------ */
+/* Swaps: two pages holding each other's layout                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Pairs of posts whose Elementor layouts were saved to the wrong post.
+ * 2026-09-03: /chicano/ (DE 565) showed the English article and
+ * /en/chicano-en/ (EN 3568) the German one - same widget ids on both, so
+ * the two blobs were simply assigned to the wrong posts.
+ */
+function mm_page_swap_map() {
+    return array(
+        array(565, 3568, 'chicano (DE 565) <-> chicano-en (EN 3568)'),
+    );
+}
+
+function mm_swap_page_layouts() {
+    $report = array(); $errors = 0;
+    foreach (mm_page_swap_map() as $pair) {
+        list($a, $b, $label) = $pair;
+        $a = (int) $a; $b = (int) $b;
+        $ra = get_post_meta($a, '_elementor_data', true);
+        $rb = get_post_meta($b, '_elementor_data', true);
+        if (!is_string($ra) || $ra === '' || !is_string($rb) || $rb === '') { $errors++; $report[] = "ERROR: $label - one side has no _elementor_data."; continue; }
+        if (!is_array(json_decode($ra, true)) || !is_array(json_decode($rb, true))) { $errors++; $report[] = "ERROR: $label - unreadable JSON on one side."; continue; }
+        if ($ra === $rb) { $report[] = "$label: both sides identical, nothing to swap"; continue; }
+
+        // page settings travel with their layout
+        $sa = get_post_meta($a, '_elementor_page_settings', true);
+        $sb = get_post_meta($b, '_elementor_page_settings', true);
+
+        // write B's layout onto A and A's onto B; each write saves a rollback and verifies
+        $wa = mm_write_elementor_data($a, $rb, "$label (into $a)");
+        if (empty($wa['ok'])) { $errors++; $report[] = $wa['msg']; continue; }
+        $wb = mm_write_elementor_data($b, $ra, "$label (into $b)");
+        if (empty($wb['ok'])) {
+            // put A back so the pair is never left half-swapped
+            mm_write_elementor_data($a, $ra, "$label (restore $a)");
+            $errors++; $report[] = $wb['msg'] . ' - first side restored.'; continue;
+        }
+        if ($sb !== '' && $sb !== false) update_post_meta($a, '_elementor_page_settings', is_string($sb) ? wp_slash($sb) : $sb);
+        if ($sa !== '' && $sa !== false) update_post_meta($b, '_elementor_page_settings', is_string($sa) ? wp_slash($sa) : $sa);
+        delete_post_meta($a, '_elementor_css'); delete_post_meta($b, '_elementor_css');
+        $report[] = "$label: swapped, $wa[msg] / $wb[msg]";
+    }
+    mm_force_elementor_css_rebuild();
+    return ($errors ? 'ERROR: ' : 'SUCCESS: ') . implode(' | ', $report);
+}
+
 /** Count every element in an Elementor tree. */
 function mm_clone_count_elements($nodes) {
     $n = 0;
