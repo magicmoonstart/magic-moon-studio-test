@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 7.1.0
+Version: 7.1.1
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -28,6 +28,38 @@ function mm_run_once($done_key, $version, $fn, $result_key) {
         update_option($done_key, $version);   // lock in only on success
     }
 }
+
+/**
+ * When the gates run.
+ *
+ * Every correction is registered on the custom action "mm_gates". It fires on
+ * every wp-admin load, as before, and ALSO once per deployed version on the
+ * front end. Before this, a git deploy did nothing until someone happened to
+ * open wp-admin - which is exactly how v7.1.0 sat deployed with the old
+ * content still showing. Now the first visitor after a deploy triggers the
+ * run; a transient lock keeps concurrent requests from running it twice, and
+ * the version is recorded so it runs once.
+ */
+add_action('admin_init', function () { do_action('mm_gates'); });
+
+add_action('init', function () {
+    if (is_admin() || wp_doing_ajax() || (function_exists('wp_doing_cron') && wp_doing_cron())) return;
+    if (defined('REST_REQUEST') && REST_REQUEST) return;
+    $hdr = get_file_data(__FILE__, array('Version' => 'Version'));
+    $ver = !empty($hdr['Version']) ? $hdr['Version'] : '0';
+    if (get_option('mm_gates_ran_for') === $ver) return;
+    if (get_transient('mm_gates_lock')) return;
+    set_transient('mm_gates_lock', 1, 300);
+    @set_time_limit(300);
+    try {
+        do_action('mm_gates');
+        update_option('mm_gates_ran_for', $ver);
+        update_option('mm_gates_ran_at', current_time('mysql'));
+    } catch (\Throwable $e) {
+        update_option('mm_gates_error', $e->getMessage() . ' @ ' . current_time('mysql'));
+    }
+    delete_transient('mm_gates_lock');
+}, 20);
 
 /**
  * Write Elementor page data and VERIFY it actually landed in the database.
@@ -211,7 +243,7 @@ function mm_apply_text_fixes() {
          . ' || STILL PRESENT: ' . ($leftover ? implode(', ', $leftover) : 'nothing — all rules fully applied');
 }
 
-add_action('admin_init', function () {
+add_action('mm_gates', function () {
     mm_run_once('mm_text_fixes_done', '6.3.0', 'mm_apply_text_fixes', 'mm_text_fixes_result');
 });
 
@@ -241,7 +273,7 @@ function mm_repair_ai1wm() {
 }
 
 // Auto-repair once per plugin version after deployment
-add_action('admin_init', function () {
+add_action('mm_gates', function () {
     if (get_option('mm_ai1wm_repair_done') !== '1.1.0') {
         $msg = mm_repair_ai1wm();
         update_option('mm_ai1wm_repair_done', '1.1.0');
@@ -281,7 +313,7 @@ function mm_fix_cta_german() {
 }
 
 // Auto-run the German CTA fix once per plugin version after deployment
-add_action('admin_init', function () {
+add_action('mm_gates', function () {
     if (get_option('mm_cta_de_fix_done') !== '1.4.0') {
         $msg = mm_fix_cta_german();
         update_option('mm_cta_de_fix_done', '1.4.0');
@@ -316,7 +348,7 @@ function mm_replace_hero_video() {
 }
 
 // Auto-replace hero video — retries until it genuinely succeeds
-add_action('admin_init', function () {
+add_action('mm_gates', function () {
     mm_run_once('mm_hero_video_done', '1.6.0', 'mm_replace_hero_video', 'mm_hero_video_result');
 });
 
@@ -428,6 +460,9 @@ function mm_state_report() {
     // If any corrections module failed to load (a parse error is caught by the
     // try/catch around the requires), this is where it becomes visible.
     $report['module_load_error'] = get_option('mm_perf_load_error', '(none)');
+    $report['gates_ran_for']     = get_option('mm_gates_ran_for', '(never)');
+    $report['gates_ran_at']      = get_option('mm_gates_ran_at', '(never)');
+    $report['gates_error']       = get_option('mm_gates_error', '(none)');
     $report['renderer_loaded']   = function_exists('mm_render_post');
 
     if (function_exists('mm_render_state')) {
@@ -492,7 +527,7 @@ function mm_restore_missing_files() {
 }
 
 // Auto-restore shipped files — retries until it genuinely succeeds
-add_action('admin_init', function () {
+add_action('mm_gates', function () {
     mm_run_once('mm_restore_files_done', '1.7.1', 'mm_restore_missing_files', 'mm_restore_files_result');
 });
 
@@ -555,7 +590,7 @@ function mm_fix_artist_images() {
 }
 
 // Auto-run artist page restore — retries until it genuinely succeeds
-add_action('admin_init', function () {
+add_action('mm_gates', function () {
     mm_run_once('mm_artist_fix_done', '4.0.0', 'mm_fix_artist_images', 'mm_artist_fix_result');
 });
 
@@ -590,7 +625,7 @@ function mm_fix_homepage() {
 }
 
 // Auto-run homepage restore — retries until it genuinely succeeds
-add_action('admin_init', function () {
+add_action('mm_gates', function () {
     mm_run_once('mm_home_fix_done', '4.1.0', 'mm_fix_homepage', 'mm_home_fix_result');
 });
 
@@ -619,7 +654,7 @@ function mm_fix_homepage_en() {
          . '. 8 Pro carousels converted to free grids, Pro slides widget replaced with the built-in hero slider.';
 }
 
-add_action('admin_init', function () {
+add_action('mm_gates', function () {
     mm_run_once('mm_home_en_fix_done', '4.1.0', 'mm_fix_homepage_en', 'mm_home_en_fix_result');
 });
 
@@ -667,7 +702,7 @@ function mm_fix_blogs() {
          . '. Pro archive-posts replaced with the free [mm_blog_archive] shortcode.' . $note;
 }
 
-add_action('admin_init', function () {
+add_action('mm_gates', function () {
     mm_run_once('mm_blogs_fix_done', '4.1.0', 'mm_fix_blogs', 'mm_blogs_fix_result');
 });
 
@@ -803,7 +838,7 @@ function mm_fix_post_thumbnails() {
     return ($set > 0 ? 'SUCCESS: ' : 'ERROR: ') . $msg;
 }
 
-add_action('admin_init', function () {
+add_action('mm_gates', function () {
     mm_run_once('mm_thumbs_fix_done', '4.2.0', 'mm_fix_post_thumbnails', 'mm_thumbs_fix_result');
 });
 
@@ -888,7 +923,7 @@ function mm_replace_portfolio_videos() {
 }
 
 // Auto-replace portfolio videos — retries until it genuinely succeeds
-add_action('admin_init', function () {
+add_action('mm_gates', function () {
     mm_run_once('mm_portfolio_videos_done', '2.1.0', 'mm_replace_portfolio_videos', 'mm_portfolio_videos_result');
 });
 
@@ -947,7 +982,7 @@ function mm_install_webp_assets() {
     return "SUCCESS: installed $copied WebP asset(s), $already already present.";
 }
 
-add_action('admin_init', function () {
+add_action('mm_gates', function () {
     mm_run_once('mm_webp_assets_done', '5.0.0', 'mm_install_webp_assets', 'mm_webp_assets_result');
 });
 
@@ -1029,7 +1064,7 @@ try {
     update_option('mm_perf_load_error', $e->getMessage());
 }
 
-add_action('admin_init', function () {
+add_action('mm_gates', function () {
     mm_run_once('mm_menu_static_done', '5.5.0', 'mm_fix_static_menu_items', 'mm_menu_static_result');
     // Order matters: the clone brings the layout and the photographs across,
     // then the translation replaces the English text it arrives with.
