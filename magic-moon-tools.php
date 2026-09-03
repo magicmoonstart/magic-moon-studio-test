@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 7.3.0
+Version: 7.4.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -449,6 +449,7 @@ function mm_state_report() {
         'page_clone'   => array('mm_page_clone_done',   'mm_page_clone_result'),
         'translate_de' => array('mm_translate_de_done', 'mm_translate_de_result'),
         'remove_blocks'=> array('mm_remove_blocks_done','mm_remove_blocks_result'),
+        'retire_pages' => array('mm_retire_pages_done', 'mm_retire_pages_result'),
         'text_fixes'   => array('mm_text_fixes_done',   'mm_text_fixes_result'),
     ) as $key => $opts) {
         $report['recent'][$key] = array(
@@ -1045,6 +1046,8 @@ try {
     require_once __DIR__ . '/corrections/translate-de/translate-de.php';
     // Delete whole misplaced sections on specific pages
     require_once __DIR__ . '/corrections/remove-blocks/remove-blocks.php';
+    // Retire whole pages: drop their menu entries everywhere and unpublish (reversible)
+    require_once __DIR__ . '/corrections/remove-pages/remove-pages.php';
     // Pages that exist but were never added to the menu
     require_once __DIR__ . '/corrections/menu-items/menu-items.php';
     // Alphabetise the submenus in both languages
@@ -1071,6 +1074,9 @@ add_action('mm_gates', function () {
     mm_run_once('mm_page_clone_done', '7.1.0', 'mm_clone_page_layouts', 'mm_page_clone_result');
     mm_run_once('mm_translate_de_done', '7.2.0', 'mm_apply_de_translations', 'mm_translate_de_result');
     mm_run_once('mm_remove_blocks_done', '7.3.0', 'mm_remove_blocks', 'mm_remove_blocks_result');
+    if (function_exists('mm_retire_pages')) {
+        mm_run_once('mm_retire_pages_done', '7.4.0', 'mm_retire_pages', 'mm_retire_pages_result');
+    }
     mm_run_once('mm_menu_items_done', '6.0.0', 'mm_add_missing_menu_items', 'mm_menu_items_result');
     // After the two missing entries exist, so they are included in the sort.
     mm_run_once('mm_menu_sort_done', '6.5.0', 'mm_menu_sort_apply', 'mm_menu_sort_result');
