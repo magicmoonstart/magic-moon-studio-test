@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 6.7.0
+Version: 6.8.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -1001,6 +1001,8 @@ try {
     require_once __DIR__ . '/corrections/menu-items/menu-items.php';
     // Alphabetise the submenus in both languages
     require_once __DIR__ . '/corrections/menu-sort/menu-sort.php';
+    // Phase 1 of replacing Elementor: read-only dependency audit
+    require_once __DIR__ . '/corrections/elementor-audit/audit.php';
     // Stop Elementor blanking container background images
     require_once __DIR__ . '/corrections/lazyload-fix/lazyload-fix.php';
     // Swap a specific container background photo on a specific page
