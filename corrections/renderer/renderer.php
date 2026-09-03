@@ -310,13 +310,19 @@ add_action('wp_footer', function () {
 // CSS
 add_action('wp_head', function () {
     if (!mm_render_serving()) return;
-    $R = $GLOBALS['mm_render'];
-    $kit = mm_css_kit();
-    $css = mm_css_compile($kit) . $kit->raw;
-    foreach (array('header', 'footer', 'page') as $k) if (!empty($R[$k])) $css .= "\n" . $R[$k]['css'];
-    // hide anything Elementor/ElementsKit still prints while they remain installed
-    $css .= "\n.mm-rendered .ekit-template-content-markup,.mm-rendered .elementor-location-header,.mm-rendered .elementor-location-footer,.mm-rendered header.site-header,.mm-rendered footer.site-footer{display:none!important}";
-    echo '<style id="mm-render-css">' . "\n" . $css . "\n</style>\n";
+    try {
+        $R = $GLOBALS['mm_render'];
+        $kit = mm_css_kit();
+        $css = mm_css_compile($kit) . $kit->raw;
+        foreach (array('header', 'footer', 'page') as $k) if (!empty($R[$k])) $css .= "\n" . $R[$k]['css'];
+        // hide anything Elementor/ElementsKit still prints while they remain installed
+        $css .= "\n.mm-rendered .ekit-template-content-markup,.mm-rendered .elementor-location-header,.mm-rendered .elementor-location-footer,.mm-rendered header.site-header,.mm-rendered footer.site-footer{display:none!important}";
+        echo '<style id="mm-render-css">' . "\n" . $css . "\n</style>\n";
+    } catch (\Throwable $e) {
+        // never let a CSS problem take the page down
+        update_option('mm_render_last_error', 'wp_head: ' . $e->getMessage() . ' @ ' . current_time('mysql'));
+        echo '<!-- mm-render css failed: ' . esc_html($e->getMessage()) . ' -->' . "\n";
+    }
 }, 20);
 
 add_filter('body_class', function ($c) {
@@ -369,7 +375,7 @@ add_action('wp_enqueue_scripts', function () {
 
     // Google fonts actually used by the rendered pages (+ kit)
     $R = $GLOBALS['mm_render'];
-    $kit = mm_css_kit();
+    try { $kit = mm_css_kit(); } catch (\Throwable $e) { $kit = new stdClass; $kit->fonts = array(); }
     $fams = array_unique(array_merge($R['fonts'], array_keys($kit->fonts)));
     $fams = array_filter($fams, function ($f) { return $f && !in_array(strtolower($f), array('arial', 'helvetica', 'georgia', 'times new roman', 'verdana', 'tahoma', 'inherit', 'sans-serif', 'serif', 'system-ui'), true); });
     if ($fams) {

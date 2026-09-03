@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 7.0.0
+Version: 7.0.1
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -424,6 +424,11 @@ function mm_state_report() {
             'result' => mb_substr((string) get_option($opts[1], '(none)'), 0, 700),
         );
     }
+
+    // If any corrections module failed to load (a parse error is caught by the
+    // try/catch around the requires), this is where it becomes visible.
+    $report['module_load_error'] = get_option('mm_perf_load_error', '(none)');
+    $report['renderer_loaded']   = function_exists('mm_render_post');
 
     if (function_exists('mm_render_state')) {
         $report['renderer'] = mm_render_state();
