@@ -381,4 +381,31 @@ return array(
     3568 => array(
         '694efba7' => array('title' => 'Our Services'),
     ),
+
+    /* ==================================================================
+     * Full Lip Color — DE 971 /vollstaendige-lippenfarbe/, EN 4451 /en/full-lip-color-en/
+     *
+     * Requested 2026-09-03: the opening sentence said pigment goes "in die
+     * obere Dermisschicht" / "into the upper dermal layer". Corrected on both
+     * pages to name the layers in order: the pigment passes through the
+     * epidermis (the outermost layer of the lip) into the upper dermis
+     * beneath it. Same widget id on both pages (37616bcb).
+     *
+     * The German widget also lacked the second paragraph the English one
+     * has ("In a tattoo and PMU studio, Full Lip Color is the most
+     * striking..."); added in German so the two pages match.
+     * ================================================================== */
+    971 => array(
+        '37616bcb' => array('editor' =>
+            '<p>' . $S . 'Full Lip Color (permanente Lippenpigmentierung / Lippenform-Design) ist ein präzisionsbasiertes Permanent-Make-up-Verfahren (PMU), bei dem Pigment durch die Epidermis – die oberste Hautschicht der Lippen – in die darunterliegende obere Dermis eingebracht wird, um ein vollständig gesättigtes, lippenstiftähnliches Erscheinungsbild zu erzeugen, das dauerhaft ohne tägliches Nachauftragen erhalten bleibt. Anders als ein subtiles Lip Blush bedeckt Full Lip Color die gesamte Lippenfläche mit opakem Pigment, definiert die Kontur und füllt den Lippenbereich in einem einheitlichen Farbton. Bevor mit der eigentlichen Pigmentierungsarbeit begonnen wird, führt die Artistin ein Lippen-Mapping und eine Vorzeichnung durch, bei der der Amorbogen, die Lippengrenzen und die Mittelpunkte der Gesichtssymmetrie markiert werden. Das Ziel ist eine Form, die zu deiner Gesichtsstruktur proportioniert wirkt, von links nach rechts konsistent ist und deinem persönlichen ästhetischen Empfinden entspricht.</span></p>'
+          . '<p>' . $S . 'In einem Tattoo- und PMU-Studio ist Full Lip Color die auffälligste aller Lippen-PMU-Techniken. Sie liefert eine definierte Kontur und eine vollständige Flächendeckung, die den Look eines deckenden Lippenstifts in jedem gewünschten Farbton nachbildet – von natürlichen Nudetönen bis zu kräftigen, pigmentreichen Farben.</span></p>'
+        ),
+    ),
+
+    4451 => array(
+        '37616bcb' => array('editor' =>
+            '<p>' . $S . 'Full Lip Color (permanent lip pigmentation / lip shape design) is a precision-based permanent makeup (PMU) procedure in which pigment is deposited through the epidermis – the outermost layer of the lips – into the upper dermis beneath it, to create a fully saturated, lipstick-like appearance that lasts without daily reapplication. Unlike a subtle lip blush, Full Lip Color covers the entire lip surface with opaque pigment, defining the contour and filling the body of the lips in a single unified tone. Before any pigment work begins, the artist performs a lip mapping and pre-draw, marking the cupid’s bow, lip borders, and center balance points using facial symmetry as a guide. The goal is a shape that appears proportionate to your facial structure, consistent from left to right, and aligned with your personal aesthetic.</span></p>'
+          . '<p>' . $S . 'In a tattoo and PMU studio, Full Lip Color is the most striking of all lip PMU techniques. It delivers a defined contour and complete surface coverage that replicates the look of a full-coverage lipstick in any chosen shade, from natural nudes to bold, pigment-rich tones.</span></p>'
+        ),
+    ),
 );
