@@ -263,4 +263,85 @@ return array(
           . 'stays crisp when it’s protected.</p>'
         ),
     ),
+
+    /* ==================================================================
+     * 543 — /floral/  (Floral-Tattoos, DE)
+     *
+     * Requested 2026-09-03. The German page was a placeholder: Lorem Ipsum
+     * bodies under sponsorship-programme headings. The English page
+     * /en/floral-en/ (post 3448) holds the finished article; page-clone
+     * copies its layout onto 543 and this block translates all 15 widgets.
+     * Widget ids are the English page's (they arrive with the clone).
+     *
+     * Headings follow the German tattoo-style pages already on the site
+     * (/realismus/, /polynesian-maori/): "Unser Service", "Geschichte der …",
+     * "Wo ist die beste Stelle für ein …-Tattoo?", "Wie unser Studio das löst:
+     * der Magic Moon …-Prozess (5 Schritte)", steps as "Schritt N: …",
+     * buttons "Terminanfrage" -> /contact/. Markup mirrors the English
+     * widgets exactly (same <p>/<span>/<b>/<ul> structure, same h4 steps).
+     * ================================================================== */
+    543 => array(
+
+        '22e4b19e' => array('title' => 'Unser Service'),
+        '430ce95e' => array('title' => 'Floral'),
+        '243e30e9' => array('title' => 'Geschichte der Floral-Tattoos'),
+
+        '15ae1c4a' => array('editor' =>
+            '<p>' . $S . 'Floral-Tattoos (auch </span><b>Blumen-Tattoos</b>' . $S . ' oder </span><b>botanische Tattoos</b>' . $S . ' genannt) gehören zu den ältesten „immergrünen“ Motiven der Körperkunst, weil Pflanzen von Natur aus Bedeutung tragen: Liebe, Trauer, Wiedergeburt, Stärke, Jahreszeiten und Identität. Der Kunsthistoriker Dr. Matt Lodder weist darauf hin, dass botanische Bildwelten in allen Kulturen und Epochen vorkommen und Pflanzen in den Traditionen der Körperkunst sowohl Inspiration als auch Rohmaterial geliefert haben.&nbsp;</span></p>'
+          . '<p>' . $S . 'Im Westen wurden Blumen vor allem durch das </span><b>American Traditional</b>' . $S . ' Tätowieren der frühen bis mittleren 1900er Jahre zur Ikone. Artists wie Norman „Sailor Jerry“ Collins machten kräftige, gut lesbare Designs populär – Rosen eingeschlossen –, die auf arbeitender Haut Bestand haben (dicke Outlines, satte Farbflächen, hoher Kontrast).&nbsp;</span></p>'
+          . '<p>' . $S . 'In Japan spielen Blumen auch im </span><b>Irezumi</b>' . $S . ' eine große Rolle: Dort dienen sie oft der kulturellen Symbolik und tragen den Fluss großer Kompositionen über den Körper. Kirschblüten (Sakura) stehen zum Beispiel für die Schönheit und Vergänglichkeit des Lebens – ideal, um mit einem Tattoo eine Geschichte zu erzählen.</span></p>'
+        ),
+
+        '63ad9417' => array('text' => 'Terminanfrage', 'link' => array('url' => '/contact/')),
+
+        'fac2c38' => array('title' => 'Wo ist die beste Stelle für ein Floral-Tattoo?'),
+
+        '67328a9f' => array('editor' =>
+            '<p>' . $S . 'Die „beste“ Platzierung hängt von </span><b>Größe + Detailgrad + Stil</b>' . $S . ' ab (Fine-Line-Floral vs. kräftige Traditional-Rose vs. realistische botanische Schattierung). Wenn dein Floral-Tattoo gut altern soll, bevorzuge Bereiche mit </span><b>stabiler Haut</b>' . $S . ', wenig Reibung und wenig Sonne – so bleiben Linien länger scharf und Verläufe weicher.&nbsp;</span></p>'
+          . '<p>' . $S . 'Platzierungen, die für Floral-Tattoo-Designs besonders gut funktionieren:</span></p>'
+          . '<ul>'
+          . $LI . '<b>Außenseite Oberarm / Schulterkappe:</b>' . $S . ' große Fläche, gute Haltbarkeit, leicht zu einem Sleeve erweiterbar.</span></li>'
+          . $LI . '<b>Unterarm (außen):</b>' . $S . ' hohe Sichtbarkeit, starke „Stiel-und-Fluss“-Formen für Rosen, Pfingstrosen und Ranken.</span></li>'
+          . $LI . '<b>Oberer Rücken / Schulterblatt:</b>' . $S . ' ideal für größere botanische Kompositionen mit feinen Details.</span></li>'
+          . $LI . '<b>Oberschenkel:</b>' . $S . ' hervorragend für große Floral-Motive (Pfingstrose, Chrysantheme, botanisches Bouquet) mit Platz für weiche Schattierung.&nbsp;</span></li>'
+          . '</ul>'
+          . '<p>' . $S . 'Platzierungen, die </span><i>' . $S . 'zwar</span></i>' . $S . ' großartig aussehen können, aber klügere Designentscheidungen verlangen: Rippen, Hände, Füße sowie Zonen mit starker Reibung oder häufiger Dehnung – dort verschwimmen Details schneller, deshalb empfehlen wir hier kräftigere Linien und einfachere Mikro-Details.&nbsp;</span></p>'
+        ),
+
+        '10a070e2' => array('text' => 'Terminanfrage', 'link' => array('url' => '/contact/')),
+
+        '2bab5177' => array('title' => 'Welche Herausforderungen gibt es bei Floral-Tattoos?'),
+
+        'f6fc1f1' => array('editor' =>
+            '<p>' . $S . 'Floral-Tattoos wirken „einfach“, sind technisch aber anspruchsvoll. Die wichtigsten Herausforderungen:</span></p>'
+          . '<p><b>Realismus mit vielen Details:</b>' . $S . ' Blütenblätter, Schichtungen und weiche Verläufe können matschig werden, wenn das Design zu klein ist oder der Kontrast nicht richtig geplant wurde (besonders bei Fine-Line-Floral-Tattoos).</span></p>'
+          . '<p><b>Alterung und Verblassen:</b>' . $S . ' Sonne ist einer der größten Faktoren für das Verblassen von Tinte; Dermatologen empfehlen, Tattoos nach der Heilung mit Breitband-Sonnenschutz LSF 30+ zu schützen.&nbsp;</span></p>'
+          . '<p><b>Haut + Immunreaktion:</b>' . $S . ' Tattoofarbe sitzt in der Dermis, und das Immunsystem beeinflusst, wie die Farbe gehalten wird und sich mit der Zeit verändert – ein Grund, warum scharfe Mikro-Details über die Jahre weicher werden können.&nbsp;</span></p>'
+          . '<p><b>Heilungsrisiken:</b>' . $S . ' Mangelhafte Nachsorge kann zu Reizungen, Problemen mit Krusten, Texturveränderungen oder sogar Infektionen führen – und jedes davon kann die Klarheit deines Floral-Tattoos beeinträchtigen.&nbsp;</span></p>'
+        ),
+
+        '55d06f48' => array('text' => 'Terminanfrage', 'link' => array('url' => '/contact/')),
+
+        '21521b86' => array('title' => 'Wie unser Studio das löst: der Magic Moon Floral-Tattoo-Prozess (5 Schritte)'),
+
+        '7b0cb73' => array('editor' =>
+            '<p>' . $S . 'Wir „kopieren“ nicht einfach eine Blume. Wir entwerfen ein </span><b>individuelles Floral-Tattoo</b>' . $S . ', das zu deinem Körper, deiner Haut und zum Altern von Tattoos passt.</span></p>'
+          . '<h4><b>Schritt 1: Beratung buchen</b></h4>'
+          . '<p>' . $S . 'Wir starten mit einer gezielten Tattoo-Beratung: Stilrichtung (botanisch, Traditional, Fine-Line, Black &amp; Grey, Farbe), Platzierung, Größe und Referenzen. Wir sprechen auch über Haltbarkeit – welche Details an deiner gewählten Stelle am besten bestehen bleiben.&nbsp;</span></p>'
+          . '<h4><b>Schritt 2: Design optimieren</b></h4>'
+          . '<p>' . $S . 'Unsere Artists verfeinern die Schablone mit </span><b>Kontrastplanung</b>' . $S . ' (der Schlüssel zu lesbaren Blütenblättern), einer Strategie für Linienstärken und Abständen, die natürliches Altern erlauben, ohne dass die Blütenform verloren geht.</span></p>'
+          . '<p>&nbsp;</p>'
+        ),
+
+        '1ca1283' => array('editor' =>
+            '<h4><b>Schritt 3: Artist auswählen</b></h4>'
+          . '<p>' . $S . 'Floral-Arbeiten sind nicht „one size fits all“. Wir matchen dich mit dem passenden Spezialisten: weiche Black-and-Grey-Schattierung, satter Farbrealismus oder kräftige Traditional-Rosen – damit die Technik zum Designziel passt.</span></p>'
+          . '<h4><b>Schritt 4: Tattoo-Session</b></h4>'
+          . '<p>' . $S . 'Am Tattoo-Tag setzen wir die Schablone entlang des Muskelverlaufs (damit sich das Floral-Motiv natürlich „bewegt“) und arbeiten mit kontrollierter Tiefe und sauberer Sättigung. Genau hier schützt professionelle Technik die Details und reduziert Gewebetrauma, das Kanten später verschwimmen lassen könnte.</span></p>'
+          . '<h4><b>Schritt 5: Nachkontrolle (falls nötig)</b></h4>'
+          . '<p>' . $S . 'Wenn dein Floral-Tattoo eine Verfeinerung braucht, vereinbaren wir nach der Heilung eine Nachkontrolle. Außerdem bekommst du eine Nachsorgeanleitung für eine saubere Heilung und langfristige Leuchtkraft – inklusive Sonnenschutz-Gewohnheiten nach dem Abheilen.&nbsp;</span></p>'
+        ),
+
+        '5eebdc67' => array('text' => 'Terminanfrage', 'link' => array('url' => '/contact/')),
+    ),
 );

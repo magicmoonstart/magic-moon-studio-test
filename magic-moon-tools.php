@@ -3,7 +3,7 @@
 Plugin Name: Magic Moon Tools
 Plugin URI: https://magic-moon.de
 Description: Deployment and maintenance tools for Magic Moon Studio.
-Version: 7.0.1
+Version: 7.1.0
 Author: Magic Moon Studio
 Author URI: https://magic-moon.de
 License: GPL2
@@ -1022,6 +1022,9 @@ try {
     require_once __DIR__ . '/corrections/lazyload-fix/lazyload-fix.php';
     // Swap a specific container background photo on a specific page
     require_once __DIR__ . '/corrections/bg-images/bg-images.php';
+    // Everything loaded: clear any error left by an earlier, partially synced deploy
+    // (Deployer writes files one at a time, so a first request can miss a file).
+    if (get_option('mm_perf_load_error')) delete_option('mm_perf_load_error');
 } catch (\Throwable $e) {
     update_option('mm_perf_load_error', $e->getMessage());
 }
@@ -1030,8 +1033,8 @@ add_action('admin_init', function () {
     mm_run_once('mm_menu_static_done', '5.5.0', 'mm_fix_static_menu_items', 'mm_menu_static_result');
     // Order matters: the clone brings the layout and the photographs across,
     // then the translation replaces the English text it arrives with.
-    mm_run_once('mm_page_clone_done', '5.7.0', 'mm_clone_page_layouts', 'mm_page_clone_result');
-    mm_run_once('mm_translate_de_done', '6.2.0', 'mm_apply_de_translations', 'mm_translate_de_result');
+    mm_run_once('mm_page_clone_done', '7.1.0', 'mm_clone_page_layouts', 'mm_page_clone_result');
+    mm_run_once('mm_translate_de_done', '7.1.0', 'mm_apply_de_translations', 'mm_translate_de_result');
     mm_run_once('mm_remove_blocks_done', '5.9.0', 'mm_remove_blocks', 'mm_remove_blocks_result');
     mm_run_once('mm_menu_items_done', '6.0.0', 'mm_add_missing_menu_items', 'mm_menu_items_result');
     // After the two missing entries exist, so they are included in the sort.

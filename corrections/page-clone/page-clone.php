@@ -45,6 +45,14 @@ function mm_page_clone_map() {
             'from'  => 4797,
             'label' => 'navel-belly-button (DE 667) <- navel-belly-button-en (EN 4797)',
         ),
+        // 2026-09-03: /floral/ was a placeholder - Lorem Ipsum bodies under
+        // sponsorship-programme headings. The English page has the finished
+        // floral article; its layout is copied and then translated by
+        // corrections/translate-de.
+        543 => array(
+            'from'  => 3448,
+            'label' => 'floral (DE 543) <- floral-en (EN 3448)',
+        ),
     );
 }
 
